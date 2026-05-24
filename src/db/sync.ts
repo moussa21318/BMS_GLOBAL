@@ -1,0 +1,220 @@
+import { localDB } from './local'
+import {
+  supabase,
+  fetchAllCars,
+  fetchAllCarImages,
+  fetchAllCarFees,
+  fetchAllCarStages,
+  fetchAllCustomers,
+  fetchAllEditRequests,
+  fetchAllNotifications,
+  fetchAllUsers,
+  createChangeLog,
+} from './cloud'
+import type { Car, CarImage, CarFees, CarStageLog, Customer, EditRequest, Notification, User } from '../types'
+
+const TABLE_ACTIONS: Record<string, (rows: any[]) => Promise<void>> = {
+  cars: (rows) => localDB.upsertCars(rows as Car[]),
+  car_images: (rows) => localDB.upsertCarImages(rows as CarImage[]),
+  car_fees: (rows) => localDB.upsertCarFees(rows as CarFees[]),
+  car_stages: (rows) => localDB.upsertCarStages(rows as CarStageLog[]),
+  customers: (rows) => localDB.upsertCustomers(rows as Customer[]),
+  edit_requests: (rows) => localDB.upsertEditRequests(rows as EditRequest[]),
+  notifications: (rows) => localDB.upsertNotifications(rows as Notification[]),
+  users: (rows) => localDB.upsertUsers(rows as User[]),
+}
+
+const BULK_FETCHERS: Record<string, () => Promise<{ data: any; error: any }>> = {
+  cars: fetchAllCars,
+  car_images: fetchAllCarImages,
+  car_fees: fetchAllCarFees,
+  car_stages: fetchAllCarStages,
+  customers: fetchAllCustomers,
+  edit_requests: fetchAllEditRequests,
+  notifications: fetchAllNotifications,
+  users: fetchAllUsers,
+}
+
+function resolveTableAction(table: string, row: any) {
+  const fn = TABLE_ACTIONS[table]
+  if (fn) return fn([row])
+  return Promise.resolve()
+}
+
+async function resolveDelete(table: string, recordId: string) {
+  switch (table) {
+    case 'cars':
+      await localDB.deleteCar(recordId)
+      break
+    case 'car_images':
+      await localDB.carImages.delete(recordId)
+      break
+    case 'car_fees':
+      await localDB.carFees.where('car_id').equals(recordId).delete()
+      break
+    case 'car_stages':
+      await localDB.carStages.where('car_id').equals(recordId).delete()
+      break
+    case 'customers':
+      await localDB.customers.delete(recordId)
+      break
+    case 'edit_requests':
+      await localDB.editRequests.delete(recordId)
+      break
+    case 'notifications':
+      await localDB.notifications.delete(recordId)
+      break
+    case 'users':
+      await localDB.users.delete(recordId)
+      break
+  }
+}
+
+class SyncManager {
+  private isSyncing = false
+  private lastSyncTimestamp: string | null = null
+  private subscriptions: { unsubscribe: () => void }[] = []
+
+  getLastSyncTimestamp(): string | null {
+    return this.lastSyncTimestamp
+  }
+
+  setLastSyncTimestamp(ts: string | null) {
+    this.lastSyncTimestamp = ts
+  }
+
+  async pushChanges() {
+    const entries = await localDB.getUnsyncedEntries()
+    if (entries.length === 0) return
+
+    for (const entry of entries) {
+      const changeLogEntry = await localDB.changeLog.get(entry.change_log_id)
+      if (changeLogEntry && changeLogEntry.table_name !== 'change_log') {
+        const { error } = await createChangeLog(changeLogEntry)
+        if (error) {
+          console.error('Failed to push change log entry:', error)
+          continue
+        }
+      }
+
+      const { table_name, record_id, operation } = entry
+      const { error } = await this.applyToSupabase(table_name, record_id, operation, entry.change_log_id)
+      if (error) {
+        console.error(`Failed to push ${operation} on ${table_name}/${record_id}:`, error)
+      }
+    }
+
+    await localDB.markSynced(entries.map(e => e.id))
+    await localDB.clearSynced()
+  }
+
+  private async applyToSupabase(
+    table: string,
+    recordId: string,
+    operation: string,
+    changeLogId: string,
+  ): Promise<{ error: any }> {
+    const changeLogEntry = await localDB.changeLog.get(changeLogId)
+    if (!changeLogEntry) return { error: null }
+
+    const { new_data } = changeLogEntry
+
+    switch (operation) {
+      case 'insert':
+      case 'update': {
+        if (!new_data) return { error: null }
+        const { error } = await supabase.from(table).upsert(new_data).select()
+        return { error }
+      }
+      case 'delete': {
+        const { error } = await supabase.from(table).delete().eq('id', recordId)
+        return { error }
+      }
+      default:
+        return { error: null }
+    }
+  }
+
+  async pullChanges() {
+    const tables = Object.keys(BULK_FETCHERS)
+    for (const table of tables) {
+      const fetchFn = BULK_FETCHERS[table]
+      if (!fetchFn) continue
+      const { data, error } = await fetchFn()
+      if (error) {
+        console.error(`Failed to pull ${table}:`, error)
+        continue
+      }
+      if (data && data.length > 0) {
+        const upsertFn = TABLE_ACTIONS[table]
+        if (upsertFn) {
+          await upsertFn(data)
+        }
+      }
+    }
+    this.lastSyncTimestamp = new Date().toISOString()
+  }
+
+  async sync() {
+    if (this.isSyncing) return
+    this.isSyncing = true
+    try {
+      await this.pushChanges()
+      await this.pullChanges()
+    } catch (err) {
+      console.error('Sync failed:', err)
+    } finally {
+      this.isSyncing = false
+    }
+  }
+
+  setupRealtime() {
+    const channels = Object.keys(BULK_FETCHERS).map(table => {
+      return supabase
+        .channel(`sync-${table}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table },
+          async (payload) => {
+            try {
+              await this.handleRealtimeEvent(table, payload)
+            } catch (err) {
+              console.error(`Realtime error on ${table}:`, err)
+            }
+          },
+        )
+        .subscribe()
+    })
+    this.subscriptions = channels
+  }
+
+  private async handleRealtimeEvent(table: string, payload: any) {
+    const eventType = payload.eventType as string
+    const record = payload.new as Record<string, any> | null
+
+    switch (eventType) {
+      case 'INSERT':
+      case 'UPDATE':
+        if (record) {
+          await resolveTableAction(table, record)
+        }
+        break
+      case 'DELETE': {
+        const oldRecord = payload.old as Record<string, any>
+        if (oldRecord?.id) {
+          await resolveDelete(table, oldRecord.id)
+        }
+        break
+      }
+    }
+  }
+
+  cleanup() {
+    for (const sub of this.subscriptions) {
+      sub.unsubscribe()
+    }
+    this.subscriptions = []
+  }
+}
+
+export const syncManager = new SyncManager()
