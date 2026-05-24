@@ -4,8 +4,10 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { changeLang } from '../i18n'
 import { NotifBadge } from '../components/NotifBadge'
+import { SyncIndicator } from '../components/SyncIndicator'
 import { isSupabaseConfigured, checkConnection } from '../db/cloud'
 import { syncManager } from '../db/sync'
+import { useSyncStore } from '../stores/syncStore'
 
 type Lang = 'ar' | 'fr' | 'en'
 
@@ -23,8 +25,9 @@ export function MainLayout() {
   const location = useLocation()
   const { user, isAdmin, logout } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [syncing, setSyncing] = useState(false)
   const [connected, setConnected] = useState<'unknown' | 'connected' | 'disconnected' | 'not_configured'>('unknown')
+  const syncStatus = useSyncStore((s) => s.status)
+  const setSyncStatus = useSyncStore((s) => s.setStatus)
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -41,13 +44,12 @@ export function MainLayout() {
   }, [])
 
   const handleSync = useCallback(async () => {
-    if (syncing || !isSupabaseConfigured()) return
-    setSyncing(true)
+    if (syncStatus === 'syncing' || !isSupabaseConfigured()) return
+    setSyncStatus('syncing')
     await syncManager.sync()
-    setSyncing(false)
     const ok = await checkConnection()
     setConnected(ok ? 'connected' : 'disconnected')
-  }, [syncing])
+  }, [syncStatus, setSyncStatus])
 
   const currentLang = i18n.language as Lang
   const isRtl = currentLang === 'ar'
@@ -133,43 +135,35 @@ export function MainLayout() {
 
             {/* Right: indicator, sync, language, notifications, user */}
             <div className="flex items-center gap-2 sm:gap-4">
-              {/* Connection indicator — always visible */}
-              <div className="flex items-center gap-1.5 text-xs" title={
-                connected === 'connected' ? 'متصل بالسيرفر' :
-                connected === 'disconnected' ? 'غير متصل بالسيرفر' :
-                connected === 'not_configured' ? 'لم يتم إعداد Supabase' : 'جارٍ الفحص...'
+              {/* Connection status + Sync indicator */}
+              <SyncIndicator />
+
+              {/* Connection dot (server reachability) */}
+              <div className="flex items-center gap-1 text-xs" title={
+                connected === 'connected' ? t('common.sync_connected') :
+                connected === 'disconnected' ? t('common.sync_disconnected') :
+                connected === 'not_configured' ? t('common.sync_disabled') : t('common.sync_checking')
               }>
                 <span
-                  className={`inline-block w-3 h-3 rounded-full ${
-                    connected === 'connected' ? 'bg-green-500 shadow-[0_0_6px_#22c55e]' :
-                    connected === 'disconnected' ? 'bg-red-500 shadow-[0_0_6px_#ef4444]' :
+                  className={`inline-block w-2 h-2 rounded-full ${
+                    connected === 'connected' ? 'bg-green-500' :
+                    connected === 'disconnected' ? 'bg-red-500' :
                     connected === 'not_configured' ? 'bg-gray-400' :
                     'bg-yellow-400 animate-pulse'
                   }`}
                 />
-                <span className={`hidden sm:inline ${
-                  connected === 'connected' ? 'text-green-700' :
-                  connected === 'disconnected' ? 'text-red-600' :
-                  connected === 'not_configured' ? 'text-gray-400' :
-                  'text-yellow-600'
-                }`}>
-                  {connected === 'connected' ? t('common.sync_connected') :
-                   connected === 'disconnected' ? t('common.sync_disconnected') :
-                   connected === 'not_configured' ? t('common.sync_disabled') :
-                   t('common.sync_checking')}
-                </span>
               </div>
 
               {/* Sync button */}
               {isSupabaseConfigured() && (
                 <button
                   onClick={handleSync}
-                  disabled={syncing}
+                  disabled={syncStatus === 'syncing'}
                   className="p-2 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-50"
                   title={t('common.sync')}
                 >
                   <svg
-                    className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`}
+                    className={`w-5 h-5 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

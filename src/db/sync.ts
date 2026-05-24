@@ -1,6 +1,7 @@
 import { localDB } from './local'
 import {
   supabase,
+  isSupabaseConfigured,
   fetchAllCars,
   fetchAllCarImages,
   fetchAllCarFees,
@@ -11,6 +12,7 @@ import {
   fetchAllUsers,
   createChangeLog,
 } from './cloud'
+import { useSyncStore } from '../stores/syncStore'
 import type { Car, CarImage, CarFees, CarStageLog, Customer, EditRequest, Notification, User } from '../types'
 
 const TABLE_ACTIONS: Record<string, (rows: any[]) => Promise<void>> = {
@@ -152,17 +154,22 @@ class SyncManager {
         }
       }
     }
-    this.lastSyncTimestamp = new Date().toISOString()
   }
 
   async sync() {
     if (this.isSyncing) return
     this.isSyncing = true
+    useSyncStore.getState().setStatus('syncing')
     try {
       await this.pushChanges()
       await this.pullChanges()
+      this.lastSyncTimestamp = new Date().toISOString()
+      useSyncStore.getState().setLastSyncAt(this.lastSyncTimestamp)
+      useSyncStore.getState().setStatus('success')
     } catch (err) {
       console.error('Sync failed:', err)
+      useSyncStore.getState().setStatus('error')
+      useSyncStore.getState().setError(err instanceof Error ? err.message : 'Sync failed')
     } finally {
       this.isSyncing = false
     }
@@ -218,3 +225,10 @@ class SyncManager {
 }
 
 export const syncManager = new SyncManager()
+
+// Auto-sync: register callback so localDB triggers sync after each CRUD
+localDB.setAutoSyncCallback(() => {
+  if (isSupabaseConfigured()) {
+    syncManager.sync()
+  }
+})

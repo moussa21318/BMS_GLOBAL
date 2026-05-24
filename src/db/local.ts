@@ -42,12 +42,25 @@ export class LocalDB extends Dexie {
     })
   }
 
+  private autoSyncCallback: (() => void) | null = null
+
+  setAutoSyncCallback(cb: () => void) {
+    this.autoSyncCallback = cb
+  }
+
+  private triggerAutoSync() {
+    if (this.autoSyncCallback) {
+      this.autoSyncCallback()
+    }
+  }
+
   // ── Sync Queue ────────────────────────────────────────────────
 
   async enqueueSync(entry: Omit<SyncQueueEntry, 'id' | 'synced' | 'created_at'>) {
     const id = crypto.randomUUID()
     const createdAt = new Date().toISOString()
     await this.syncQueue.add({ ...entry, id, synced: false, created_at: createdAt })
+    this.triggerAutoSync()
     return id
   }
 
