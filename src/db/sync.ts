@@ -89,25 +89,36 @@ class SyncManager {
     const entries = await localDB.getUnsyncedEntries()
     if (entries.length === 0) return
 
+    const syncedIds: string[] = []
+
     for (const entry of entries) {
-      const changeLogEntry = await localDB.changeLog.get(entry.change_log_id)
-      if (changeLogEntry && changeLogEntry.table_name !== 'change_log') {
-        const { error } = await createChangeLog(changeLogEntry)
+      try {
+        const changeLogEntry = await localDB.changeLog.get(entry.change_log_id)
+        if (changeLogEntry && changeLogEntry.table_name !== 'change_log') {
+          const { error } = await createChangeLog(changeLogEntry)
+          if (error) {
+            console.error('Failed to push change log entry:', error)
+            continue
+          }
+        }
+
+        const { table_name, record_id, operation } = entry
+        const { error } = await this.applyToSupabase(table_name, record_id, operation, entry.change_log_id)
         if (error) {
-          console.error('Failed to push change log entry:', error)
+          console.error(`Failed to push ${operation} on ${table_name}/${record_id}:`, error)
           continue
         }
-      }
 
-      const { table_name, record_id, operation } = entry
-      const { error } = await this.applyToSupabase(table_name, record_id, operation, entry.change_log_id)
-      if (error) {
-        console.error(`Failed to push ${operation} on ${table_name}/${record_id}:`, error)
+        syncedIds.push(entry.id)
+      } catch (err) {
+        console.error(`Error processing sync entry ${entry.id}:`, err)
       }
     }
 
-    await localDB.markSynced(entries.map(e => e.id))
-    await localDB.clearSynced()
+    if (syncedIds.length > 0) {
+      await localDB.markSynced(syncedIds)
+      await localDB.clearSynced()
+    }
   }
 
   private async applyToSupabase(
@@ -116,24 +127,28 @@ class SyncManager {
     operation: string,
     changeLogId: string,
   ): Promise<{ error: any }> {
-    const changeLogEntry = await localDB.changeLog.get(changeLogId)
-    if (!changeLogEntry) return { error: null }
+    try {
+      const changeLogEntry = await localDB.changeLog.get(changeLogId)
+      if (!changeLogEntry) return { error: null }
 
-    const { new_data } = changeLogEntry
+      const { new_data } = changeLogEntry
 
-    switch (operation) {
-      case 'insert':
-      case 'update': {
-        if (!new_data) return { error: null }
-        const { error } = await supabase.from(table).upsert(new_data).select()
-        return { error }
+      switch (operation) {
+        case 'insert':
+        case 'update': {
+          if (!new_data) return { error: null }
+          const { error } = await supabase!.from(table).upsert(new_data).select()
+          return { error }
+        }
+        case 'delete': {
+          const { error } = await supabase!.from(table).delete().eq('id', recordId)
+          return { error }
+        }
+        default:
+          return { error: null }
       }
-      case 'delete': {
-        const { error } = await supabase.from(table).delete().eq('id', recordId)
-        return { error }
-      }
-      default:
-        return { error: null }
+    } catch (err) {
+      return { error: err }
     }
   }
 
@@ -142,16 +157,20 @@ class SyncManager {
     for (const table of tables) {
       const fetchFn = BULK_FETCHERS[table]
       if (!fetchFn) continue
-      const { data, error } = await fetchFn()
-      if (error) {
-        console.error(`Failed to pull ${table}:`, error)
-        continue
-      }
-      if (data && data.length > 0) {
-        const upsertFn = TABLE_ACTIONS[table]
-        if (upsertFn) {
-          await upsertFn(data)
+      try {
+        const { data, error } = await fetchFn()
+        if (error) {
+          console.error(`Failed to pull ${table}:`, error)
+          continue
         }
+        if (data && data.length > 0) {
+          const upsertFn = TABLE_ACTIONS[table]
+          if (upsertFn) {
+            await upsertFn(data)
+          }
+        }
+      } catch (err) {
+        console.error(`Error pulling ${table}:`, err)
       }
     }
   }
