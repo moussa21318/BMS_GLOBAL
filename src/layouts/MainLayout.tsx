@@ -24,11 +24,11 @@ export function MainLayout() {
   const { user, isAdmin, logout } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [syncing, setSyncing] = useState(false)
-  const [connected, setConnected] = useState<'unknown' | 'connected' | 'disconnected'>('unknown')
+  const [connected, setConnected] = useState<'unknown' | 'connected' | 'disconnected' | 'not_configured'>('unknown')
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
-      setConnected('disconnected')
+      setConnected('not_configured')
       return
     }
     const check = async () => {
@@ -131,14 +131,41 @@ export function MainLayout() {
               <h1 className="text-lg font-semibold text-gray-800 lg:hidden">BMS Global</h1>
             </div>
 
-            {/* Right: sync, language, notifications, user */}
+            {/* Right: indicator, sync, language, notifications, user */}
             <div className="flex items-center gap-2 sm:gap-4">
+              {/* Connection indicator — always visible */}
+              <div className="flex items-center gap-1.5 text-xs" title={
+                connected === 'connected' ? 'متصل بالسيرفر' :
+                connected === 'disconnected' ? 'غير متصل بالسيرفر' :
+                connected === 'not_configured' ? 'لم يتم إعداد Supabase' : 'جارٍ الفحص...'
+              }>
+                <span
+                  className={`inline-block w-3 h-3 rounded-full ${
+                    connected === 'connected' ? 'bg-green-500 shadow-[0_0_6px_#22c55e]' :
+                    connected === 'disconnected' ? 'bg-red-500 shadow-[0_0_6px_#ef4444]' :
+                    connected === 'not_configured' ? 'bg-gray-400' :
+                    'bg-yellow-400 animate-pulse'
+                  }`}
+                />
+                <span className={`hidden sm:inline ${
+                  connected === 'connected' ? 'text-green-700' :
+                  connected === 'disconnected' ? 'text-red-600' :
+                  connected === 'not_configured' ? 'text-gray-400' :
+                  'text-yellow-600'
+                }`}>
+                  {connected === 'connected' ? t('common.sync_connected') :
+                   connected === 'disconnected' ? t('common.sync_disconnected') :
+                   connected === 'not_configured' ? t('common.sync_disabled') :
+                   t('common.sync_checking')}
+                </span>
+              </div>
+
               {/* Sync button */}
               {isSupabaseConfigured() && (
                 <button
                   onClick={handleSync}
                   disabled={syncing}
-                  className="p-2 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-50 relative"
+                  className="p-2 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-50"
                   title={t('common.sync')}
                 >
                   <svg
@@ -149,12 +176,6 @@ export function MainLayout() {
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  <span
-                    className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
-                      connected === 'connected' ? 'bg-green-500' :
-                      connected === 'disconnected' ? 'bg-red-500' : 'bg-yellow-400'
-                    }`}
-                  />
                 </button>
               )}
               {/* Language switcher */}
