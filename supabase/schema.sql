@@ -1,6 +1,6 @@
 -- BMS Global - Supabase Schema
 -- Run this in Supabase SQL Editor
-
+-- thanks to moussa21318
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
