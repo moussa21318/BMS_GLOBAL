@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase, isSupabaseConfigured } from '../db/cloud'
-import { hash } from '../utils/hash'
+import { hash, verify } from '../utils/hash'
 import type { User } from '../types'
 
 const USER_KEY = 'bms_user'
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: 'admin',
             full_name: 'Admin',
             is_active: true,
-            password_hash: hash('admin'),
+            password_hash: await hash('admin'),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }
@@ -68,18 +68,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string): Promise<string | null> => {
     if (!isSupabaseConfigured() || !supabase) return t('auth.wrong_credentials')
 
-    const passwordHash = hash(password)
     try {
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('username', username)
-        .eq('password_hash', passwordHash)
         .maybeSingle()
 
       if (error || !data || !data.is_active) return t('auth.wrong_credentials')
 
       const u = data as User
+      const ok = await verify(password, u.password_hash)
+      if (!ok) return t('auth.wrong_credentials')
+
       setUser(u)
       localStorage.setItem(USER_KEY, u.id)
       return null

@@ -90,7 +90,7 @@ export function UsersPage() {
           updated_at: now,
         }
         if (form.password.trim()) {
-          payload.password_hash = hash(form.password.trim())
+          payload.password_hash = await hash(form.password.trim())
         }
         const { error: updateErr } = await cloudUpdateUser(editingId, payload)
         if (updateErr) throw new Error(JSON.stringify(updateErr))
@@ -102,7 +102,7 @@ export function UsersPage() {
           role: form.role,
           full_name: form.full_name.trim(),
           is_active: form.is_active,
-          password_hash: hash(form.password.trim()),
+          password_hash: await hash(form.password.trim()),
           created_at: now,
           updated_at: now,
         }
