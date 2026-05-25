@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           syncManager.sync()
         }
       } catch (e) {
-        console.error('Auth init error:', e)
+        console.error('Auth init error:', e instanceof Error ? e.message : JSON.stringify(e))
         try {
           await localDB.repairDatabase()
           const existing = await localDB.users.toArray()
@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.setItem(USER_KEY, anyUser.id)
           }
         } catch (e2) {
-          console.error('Auth init recovery failed:', e2)
+          console.error('Auth init recovery failed:', e2 instanceof Error ? e2.message : JSON.stringify(e2))
         }
       }
       syncManager.setReady(true)
@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return null
     } catch (err) {
-      console.error('login error:', err)
+      console.error('login error:', err instanceof Error ? err.message : JSON.stringify(err))
       try {
         await localDB.repairDatabase()
         const all = await localDB.users.toArray()

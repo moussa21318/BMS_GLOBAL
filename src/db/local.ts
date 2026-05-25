@@ -59,7 +59,7 @@ export class LocalDB extends Dexie {
       await this.delete()
       await this.open()
     } catch (e) {
-      console.error('repairDatabase failed:', e)
+      console.error('repairDatabase failed:', e instanceof Error ? e.message : JSON.stringify(e))
     }
   }
 
@@ -73,16 +73,16 @@ export class LocalDB extends Dexie {
       this.triggerAutoSync()
       return id
     } catch (err) {
-      console.error('enqueueSync failed:', err)
+      console.error('enqueueSync failed:', err instanceof Error ? err.message : JSON.stringify(err))
       return ''
     }
   }
 
   async getUnsyncedEntries(): Promise<SyncQueueEntry[]> {
     try {
-      return await this.syncQueue.where({ synced: false }).toArray()
+      return (await this.syncQueue.toArray()).filter(e => !e.synced)
     } catch (err) {
-      console.error('getUnsyncedEntries failed:', err)
+      console.error('getUnsyncedEntries failed:', err instanceof Error ? err.message : JSON.stringify(err))
       return []
     }
   }
@@ -91,7 +91,7 @@ export class LocalDB extends Dexie {
     try {
       await this.syncQueue.bulkUpdate(ids.map(id => ({ key: id, changes: { synced: true } })))
     } catch (err) {
-      console.error('markSynced failed:', err)
+      console.error('markSynced failed:', err instanceof Error ? err.message : JSON.stringify(err))
     }
   }
 
@@ -99,7 +99,7 @@ export class LocalDB extends Dexie {
     try {
       await this.syncQueue.where({ synced: true }).delete()
     } catch (err) {
-      console.error('clearSynced failed:', err)
+      console.error('clearSynced failed:', err instanceof Error ? err.message : JSON.stringify(err))
     }
   }
 

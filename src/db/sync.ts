@@ -99,10 +99,20 @@ class SyncManager {
     try {
       entries = await localDB.getUnsyncedEntries()
     } catch (err) {
-      console.error('Error reading unsynced entries:', err)
+      console.error('Error reading unsynced entries:', err instanceof Error ? err.message : JSON.stringify(err))
       return
     }
-    if (entries.length === 0) return
+    if (entries.length === 0) {
+      // Retry once after 2s in case DB was being initialized
+      await new Promise(r => setTimeout(r, 2000))
+      try {
+        entries = await localDB.getUnsyncedEntries()
+      } catch (err) {
+        console.error('Error reading unsynced entries (retry):', err instanceof Error ? err.message : JSON.stringify(err))
+        return
+      }
+      if (entries.length === 0) return
+    }
 
     const syncedIds: string[] = []
 
@@ -126,7 +136,7 @@ class SyncManager {
 
         syncedIds.push(entry.id)
       } catch (err) {
-        console.error(`Error processing sync entry ${entry.id}:`, err)
+        console.error(`Error processing sync entry ${entry.id}:`, err instanceof Error ? err.message : JSON.stringify(err))
       }
     }
 
@@ -135,7 +145,7 @@ class SyncManager {
         await localDB.markSynced(syncedIds)
         await localDB.clearSynced()
       } catch (err) {
-        console.error('Error marking entries as synced:', err)
+        console.error('Error marking entries as synced:', err instanceof Error ? err.message : JSON.stringify(err))
       }
     }
   }
@@ -173,7 +183,7 @@ class SyncManager {
           return { error: null }
       }
     } catch (err) {
-      console.error(`applyToSupabase exception on ${table}/${recordId}:`, err)
+      console.error(`applyToSupabase exception on ${table}/${recordId}:`, err instanceof Error ? err.message : JSON.stringify(err))
       return { error: err }
     }
   }
@@ -186,7 +196,7 @@ class SyncManager {
       try {
         const { data, error } = await fetchFn()
         if (error) {
-          console.error(`Failed to pull ${table}:`, error)
+          console.error(`Failed to pull ${table}:`, error instanceof Error ? error.message : JSON.stringify(error))
           continue
         }
         if (data && data.length > 0) {
@@ -196,7 +206,7 @@ class SyncManager {
           }
         }
       } catch (err) {
-        console.error(`Error pulling ${table}:`, err)
+        console.error(`Error pulling ${table}:`, err instanceof Error ? err.message : JSON.stringify(err))
       }
     }
   }
@@ -214,7 +224,7 @@ class SyncManager {
       useSyncStore.getState().setLastSyncAt(this.lastSyncTimestamp)
       useSyncStore.getState().setStatus('success')
     } catch (err) {
-      console.error('Sync failed:', err)
+      console.error('Sync failed:', err instanceof Error ? err.message : JSON.stringify(err))
       useSyncStore.getState().setStatus('error')
       useSyncStore.getState().setError(err instanceof Error ? err.message : 'Sync failed')
     } finally {
@@ -233,7 +243,7 @@ class SyncManager {
             try {
               await this.handleRealtimeEvent(table, payload)
             } catch (err) {
-              console.error(`Realtime error on ${table}:`, err)
+              console.error(`Realtime error on ${table}:`, err instanceof Error ? err.message : JSON.stringify(err))
             }
           },
         )
