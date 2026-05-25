@@ -10,6 +10,7 @@ export interface User {
   role: UserRole
   full_name: string
   is_active: boolean
+  password_hash: string
   created_at: string
   updated_at: string
 }

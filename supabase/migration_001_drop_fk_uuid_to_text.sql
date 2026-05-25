@@ -58,7 +58,10 @@ ALTER TABLE public.customers ALTER COLUMN car_id TYPE TEXT;
 ALTER TABLE public.edit_requests ALTER COLUMN car_id TYPE TEXT;
 ALTER TABLE public.notifications ALTER COLUMN car_id TYPE TEXT;
 
--- 5. Change all id columns to TEXT
+-- 5. Add password_hash column to users table
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS password_hash TEXT NOT NULL DEFAULT '';
+
+-- 6. Change all id columns to TEXT
 ALTER TABLE public.users ALTER COLUMN id TYPE TEXT;
 ALTER TABLE public.cars ALTER COLUMN id TYPE TEXT;
 ALTER TABLE public.car_images ALTER COLUMN id TYPE TEXT;

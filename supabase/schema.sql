@@ -11,6 +11,7 @@ CREATE TABLE public.users (
   role TEXT NOT NULL CHECK (role IN ('admin', 'employee')),
   full_name TEXT NOT NULL,
   is_active BOOLEAN DEFAULT true,
+  password_hash TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

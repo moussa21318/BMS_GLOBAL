@@ -90,21 +90,23 @@ export function UsersPage() {
         if (form.password.trim()) {
           const h = hash(form.password.trim())
           localStorage.setItem('bms_pw_' + form.username, h)
+          payload.password_hash = h
         }
         await localDB.updateUser(editingId, payload)
         setUsers(prev => prev.map(u => (u.id === editingId ? { ...u, ...payload } : u)))
       } else {
         const id = crypto.randomUUID()
+        const h = hash(form.password.trim())
         const record: User = {
           id,
           username: form.username.trim(),
           role: form.role,
           full_name: form.full_name.trim(),
           is_active: form.is_active,
+          password_hash: h,
           created_at: now,
           updated_at: now,
         }
-        const h = hash(form.password.trim())
         localStorage.setItem('bms_pw_' + record.username, h)
         await localDB.addUser(record)
         setUsers(prev => [...prev, record])
