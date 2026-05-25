@@ -33,6 +33,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return
         }
 
+        const { count } = await supabase!.from('users').select('*', { count: 'exact', head: true })
+        if (count === 0) {
+          const adminUser: User = {
+            id: crypto.randomUUID(),
+            username: 'admin',
+            role: 'admin',
+            full_name: 'Admin',
+            is_active: true,
+            password_hash: hash('admin'),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+          await supabase!.from('users').insert(adminUser)
+        }
+
         const savedId = localStorage.getItem(USER_KEY)
         if (savedId) {
           const { data, error } = await supabase!.from('users').select('*').eq('id', savedId).maybeSingle()
