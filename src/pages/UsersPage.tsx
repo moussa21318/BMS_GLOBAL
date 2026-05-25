@@ -132,10 +132,21 @@ export function UsersPage() {
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">{t('user.title')}</h1>
-        <button onClick={openAdd}
-          className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700">
-          {t('user.add_user')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={async () => {
+            const all = await localDB.users.toArray()
+            const data = all.map(u => ({ username: u.username, password_hash: u.password_hash }))
+            console.table(data)
+            alert(JSON.stringify(data, null, 2))
+          }}
+            className="rounded-lg bg-gray-600 px-5 py-2 text-sm font-medium text-white hover:bg-gray-700">
+            تصدير
+          </button>
+          <button onClick={openAdd}
+            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            {t('user.add_user')}
+          </button>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-gray-200">
