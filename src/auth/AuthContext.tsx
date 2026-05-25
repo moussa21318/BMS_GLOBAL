@@ -60,8 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const existing = await localDB.users.toArray()
         if (existing.length === 0) {
-          await localDB.users.add({
-            id: 'admin-default-id',
+          await localDB.addUser({
+            id: crypto.randomUUID(),
             username: 'admin',
             role: 'admin',
             full_name: 'Admin',
