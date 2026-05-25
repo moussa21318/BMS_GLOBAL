@@ -74,8 +74,17 @@ async function resolveDelete(table: string, recordId: string) {
 
 class SyncManager {
   private isSyncing = false
+  private ready = false
   private lastSyncTimestamp: string | null = null
   private subscriptions: { unsubscribe: () => void }[] = []
+
+  setReady(ready: boolean) {
+    this.ready = ready
+  }
+
+  isReady(): boolean {
+    return this.ready
+  }
 
   getLastSyncTimestamp(): string | null {
     return this.lastSyncTimestamp
@@ -198,7 +207,9 @@ class SyncManager {
     useSyncStore.getState().setStatus('syncing')
     try {
       await this.pushChanges()
-      await this.pullChanges()
+      if (isSupabaseConfigured()) {
+        await this.pullChanges()
+      }
       this.lastSyncTimestamp = new Date().toISOString()
       useSyncStore.getState().setLastSyncAt(this.lastSyncTimestamp)
       useSyncStore.getState().setStatus('success')
@@ -264,7 +275,7 @@ export const syncManager = new SyncManager()
 
 // Auto-sync: register callback so localDB triggers sync after each CRUD
 localDB.setAutoSyncCallback(() => {
-  if (isSupabaseConfigured()) {
+  if (syncManager.isReady() && isSupabaseConfigured()) {
     syncManager.sync()
   }
 })

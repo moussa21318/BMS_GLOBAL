@@ -122,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('Auth init recovery failed:', e2)
         }
       }
+      syncManager.setReady(true)
       setLoading(false)
     })()
   }, [])

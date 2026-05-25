@@ -74,7 +74,6 @@ export class LocalDB extends Dexie {
       return id
     } catch (err) {
       console.error('enqueueSync failed:', err)
-      await this.repairDatabase()
       return ''
     }
   }
@@ -84,7 +83,6 @@ export class LocalDB extends Dexie {
       return await this.syncQueue.where({ synced: false }).toArray()
     } catch (err) {
       console.error('getUnsyncedEntries failed:', err)
-      await this.repairDatabase()
       return []
     }
   }
@@ -94,7 +92,6 @@ export class LocalDB extends Dexie {
       await this.syncQueue.bulkUpdate(ids.map(id => ({ key: id, changes: { synced: true } })))
     } catch (err) {
       console.error('markSynced failed:', err)
-      await this.repairDatabase()
     }
   }
 
@@ -103,7 +100,6 @@ export class LocalDB extends Dexie {
       await this.syncQueue.where({ synced: true }).delete()
     } catch (err) {
       console.error('clearSynced failed:', err)
-      await this.repairDatabase()
     }
   }
 
