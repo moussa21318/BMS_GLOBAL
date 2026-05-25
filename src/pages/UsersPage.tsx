@@ -30,6 +30,8 @@ export function UsersPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<UserForm>(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!isAdmin) return
@@ -149,8 +151,15 @@ export function UsersPage() {
         return
       }
     }
-    if (!confirm(t('user.confirm_delete', { name: u.full_name || u.username }))) return
-    const { error } = await cloudDeleteUser(u.id!)
+    setDeleteTarget(u)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const { error } = await cloudDeleteUser(deleteTarget.id!)
+    setDeleting(false)
+    setDeleteTarget(null)
     if (error) { console.error(error); return }
     await load()
   }
@@ -274,6 +283,32 @@ export function UsersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+            <h2 className="mb-2 text-lg font-semibold text-gray-900">{t('common.delete')}</h2>
+            <table className="mb-4 w-full text-sm">
+              <tbody>
+                <tr><td className="py-1 font-medium text-gray-600">{t('user.username')}</td><td className="py-1 text-gray-900">{deleteTarget.username}</td></tr>
+                <tr><td className="py-1 font-medium text-gray-600">{t('user.full_name')}</td><td className="py-1 text-gray-900">{deleteTarget.full_name}</td></tr>
+                <tr><td className="py-1 font-medium text-gray-600">{t('user.role')}</td><td className="py-1 text-gray-900">{deleteTarget.role === 'admin' ? t('user.admin') : t('user.employee')}</td></tr>
+              </tbody>
+            </table>
+            <p className="mb-5 text-sm text-gray-500">{t('user.confirm_delete', { name: deleteTarget.full_name || deleteTarget.username })}</p>
+            <div className="flex items-center justify-end gap-3">
+              <button onClick={() => setDeleteTarget(null)} disabled={deleting}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                {t('common.cancel')}
+              </button>
+              <button onClick={confirmDelete} disabled={deleting}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">
+                {deleting ? t('common.loading') : t('common.delete')}
+              </button>
+            </div>
           </div>
         </div>
       )}
