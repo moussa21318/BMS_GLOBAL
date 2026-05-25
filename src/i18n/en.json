@@ -137,7 +137,7 @@
       "price_positive": "Price must be greater than zero",
       "invalid_year": "Invalid model year",
       "fees_exceed_price": "Deposit + second payment exceeds initial price",
-      "deposit_second_equal": "Deposit + second payment must equal the initial price"
+      "deposit_second_exceeds": "Deposit + second payment must not exceed the initial price"
     }
   },
   "fees": {

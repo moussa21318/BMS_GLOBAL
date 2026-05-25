@@ -151,8 +151,6 @@ export function CarDetails() {
       return
     }
     const updated: CarFees = { ...fees, [key]: value, updated_by: user.id }
-    if (key === 'deposit') updated.second_payment = car.initial_price - value
-    if (key === 'second_payment') updated.deposit = car.initial_price - value
     await cloud.upsertCarFees(updated)
     await loadAll()
   }
@@ -163,7 +161,7 @@ export function CarDetails() {
   const totalPrice = car ? (car.initial_price + additionalFees) : 0
   const canEdit = isAdmin || !car?.confirmed
   const canEditFees = canEdit
-  const paymentDiff = fees ? (car!.initial_price - fees.deposit - fees.second_payment) : 0
+  const paymentExceeds = fees ? (fees.deposit + fees.second_payment - car!.initial_price) : 0
   const getUserName = (id: string) => userMap.get(id)?.full_name || userMap.get(id)?.username || id
   const canConfirm = car && !car.confirmed && user && car.created_by === user.id
 
@@ -426,9 +424,9 @@ export function CarDetails() {
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('cars.payment_breakdown')}</p>
                 <EditableFeeRow label={t('cars.deposit')} value={fees.deposit} canEdit={canEditFees} onSave={v => handleFeeUpdate('deposit', v)} />
                 <EditableFeeRow label={t('cars.second_payment')} value={fees.second_payment} canEdit={canEditFees} onSave={v => handleFeeUpdate('second_payment', v)} />
-                <div className={`flex justify-between text-xs font-semibold ${paymentDiff === 0 ? 'text-green-600' : 'text-red-500'}`}>
+                <div className={`flex justify-between text-xs font-semibold ${paymentExceeds <= 0 ? 'text-green-600' : 'text-red-500'}`}>
                   <span>{t('cars.initial_price')}</span>
-                  <span>{car.initial_price.toLocaleString('de-DE')} KRW {paymentDiff !== 0 && `(${paymentDiff > 0 ? '-' : '+'}${Math.abs(paymentDiff)})`}</span>
+                  <span>{car.initial_price.toLocaleString('de-DE')} KRW {paymentExceeds > 0 && `(+${paymentExceeds})`}</span>
                 </div>
                 <hr className="border-gray-200" />
 

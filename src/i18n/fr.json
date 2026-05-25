@@ -137,7 +137,7 @@
       "price_positive": "Le prix doit être supérieur à zéro",
       "invalid_year": "Année du modèle invalide",
       "fees_exceed_price": "L'acompte + le deuxième paiement dépasse le prix initial",
-      "deposit_second_equal": "L'acompte + le deuxième paiement doit égaler le prix initial"
+      "deposit_second_exceeds": "L'acompte + le deuxième paiement ne doit pas dépasser le prix initial"
     }
   },
   "fees": {

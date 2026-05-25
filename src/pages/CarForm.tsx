@@ -82,23 +82,12 @@ export function CarForm() {
   }
 
   function updateForm(key: string, value: string | number) {
-    if (key === 'initial_price' && typeof value === 'number' && value > 0) {
-      setFees(f => ({ ...f, second_payment: Math.max(0, value - f.deposit) }))
-    }
     setForm(prev => ({ ...prev, [key]: value }))
     setError('')
   }
 
   function updateFees(key: string, value: string) {
-    const num = Math.max(0, Number(value) || 0)
-    setFees(prev => {
-      const updated = { ...prev, [key]: num }
-      if (form.initial_price > 0) {
-        if (key === 'deposit') updated.second_payment = Math.max(0, form.initial_price - num)
-        if (key === 'second_payment') updated.deposit = Math.max(0, form.initial_price - num)
-      }
-      return updated
-    })
+    setFees(prev => ({ ...prev, [key]: Math.max(0, Number(value) || 0) }))
     setFeesError('')
   }
 
@@ -133,8 +122,8 @@ export function CarForm() {
     if (Number.isNaN(form.model_year) || !MODEL_YEARS.includes(form.model_year)) {
       return t('cars.validation.invalid_year')
     }
-    if (fees.deposit + fees.second_payment !== form.initial_price) {
-      return t('cars.validation.deposit_second_equal')
+    if (fees.deposit + fees.second_payment > form.initial_price) {
+      return t('cars.validation.deposit_second_exceeds')
     }
     return null
   }
@@ -292,7 +281,7 @@ export function CarForm() {
             <FeeField label={t('cars.deposit')} value={fees.deposit} onChange={v => updateFees('deposit', v)} />
             <FeeField label={t('cars.second_payment')} value={fees.second_payment} onChange={v => updateFees('second_payment', v)} />
           </div>
-          <div className={`flex justify-between text-sm font-semibold ${fees.deposit + fees.second_payment === form.initial_price ? 'text-green-600' : 'text-red-500'}`}>
+          <div className={`flex justify-between text-sm font-semibold ${fees.deposit + fees.second_payment <= form.initial_price ? 'text-green-600' : 'text-red-500'}`}>
             <span>{t('cars.initial_price')}</span>
             <span>{form.initial_price.toLocaleString('de-DE')} KRW</span>
           </div>
