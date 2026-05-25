@@ -98,10 +98,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (e) {
         console.error('Auth init error:', e)
-        const anyUser = await localDB.users.where('is_active').equals(true).limit(1).first().catch(() => null)
-        if (anyUser) {
-          setUser(anyUser)
-          localStorage.setItem(USER_KEY, anyUser.id)
+        try {
+          await localDB.repairDatabase()
+          const existing = await localDB.users.toArray()
+          if (existing.length === 0) {
+            await localDB.addUser({
+              id: crypto.randomUUID(),
+              username: 'admin',
+              role: 'admin',
+              full_name: 'Admin',
+              is_active: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+          }
+          if (!getPwHash('admin')) setPwHash('admin', 'admin')
+          const anyUser = await localDB.users.where('is_active').equals(true).limit(1).first()
+          if (anyUser) {
+            setUser(anyUser)
+            localStorage.setItem(USER_KEY, anyUser.id)
+          }
+        } catch (e2) {
+          console.error('Auth init recovery failed:', e2)
         }
       }
       setLoading(false)
@@ -124,8 +142,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         syncManager.sync()
       }
       return null
-    } catch {
-      return 'اسم المستخدم أو كلمة المرور غير صحيحة'
+    } catch (err) {
+      console.error('login error:', err)
+      try {
+        await localDB.repairDatabase()
+        const all = await localDB.users.toArray()
+        const found = all.find(u => u.username === username && u.is_active)
+        if (!found) return 'اسم المستخدم أو كلمة المرور غير صحيحة'
+        if (!getPwHash(username)) setPwHash(username, password)
+        else if (getPwHash(username) !== hash(password)) return 'اسم المستخدم أو كلمة المرور غير صحيحة'
+        setUser(found)
+        localStorage.setItem(USER_KEY, found.id)
+        if (isSupabaseConfigured()) syncManager.sync()
+        return null
+      } catch {
+        return 'اسم المستخدم أو كلمة المرور غير صحيحة'
+      }
     }
   }
 
