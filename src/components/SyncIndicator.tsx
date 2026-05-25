@@ -41,19 +41,26 @@ export function SyncIndicator() {
   const c = config[status]
 
   return (
-    <div className="flex items-center gap-1.5 text-xs" title={c.title}>
-      <span className={`inline-block w-2.5 h-2.5 rounded-full ${c.dot}`} />
-      <span className={`hidden sm:inline ${
-        status === 'success' ? 'text-green-700' :
-        status === 'error' ? 'text-red-600' :
-        status === 'syncing' ? 'text-blue-600' :
-        'text-gray-400'
-      }`}>
-        {t(c.labelKey)}
-        {lastSyncAt && status === 'success' && (
-          <span className="text-gray-400 mr-1">({formatTimeAgo(lastSyncAt)})</span>
-        )}
-      </span>
+    <div className="flex flex-col items-start gap-0.5 text-xs" title={c.title}>
+      <div className="flex items-center gap-1.5">
+        <span className={`inline-block w-2.5 h-2.5 rounded-full ${c.dot}`} />
+        <span className={`hidden sm:inline ${
+          status === 'success' ? 'text-green-700' :
+          status === 'error' ? 'text-red-600' :
+          status === 'syncing' ? 'text-blue-600' :
+          'text-gray-400'
+        }`}>
+          {t(c.labelKey)}
+          {lastSyncAt && status === 'success' && (
+            <span className="text-gray-400 mr-1">({formatTimeAgo(lastSyncAt)})</span>
+          )}
+        </span>
+      </div>
+      {status === 'error' && error && (
+        <span className="text-red-500 max-w-[200px] truncate leading-tight" title={error}>
+          {error}
+        </span>
+      )}
     </div>
   )
 }

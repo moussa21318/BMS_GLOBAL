@@ -86,7 +86,13 @@ class SyncManager {
   }
 
   async pushChanges() {
-    const entries = await localDB.getUnsyncedEntries()
+    let entries: import('../db/local').SyncQueueEntry[] = []
+    try {
+      entries = await localDB.getUnsyncedEntries()
+    } catch (err) {
+      console.error('Error reading unsynced entries:', err)
+      return
+    }
     if (entries.length === 0) return
 
     const syncedIds: string[] = []
@@ -97,7 +103,7 @@ class SyncManager {
         if (changeLogEntry && changeLogEntry.table_name !== 'change_log') {
           const { error } = await createChangeLog(changeLogEntry)
           if (error) {
-            console.error('Failed to push change log entry:', error)
+            console.error('Failed to push change log entry:', JSON.stringify(error))
             continue
           }
         }
@@ -105,7 +111,7 @@ class SyncManager {
         const { table_name, record_id, operation } = entry
         const { error } = await this.applyToSupabase(table_name, record_id, operation, entry.change_log_id)
         if (error) {
-          console.error(`Failed to push ${operation} on ${table_name}/${record_id}:`, error)
+          console.error(`Failed to push ${operation} on ${table_name}/${record_id}:`, JSON.stringify(error))
           continue
         }
 
@@ -116,8 +122,12 @@ class SyncManager {
     }
 
     if (syncedIds.length > 0) {
-      await localDB.markSynced(syncedIds)
-      await localDB.clearSynced()
+      try {
+        await localDB.markSynced(syncedIds)
+        await localDB.clearSynced()
+      } catch (err) {
+        console.error('Error marking entries as synced:', err)
+      }
     }
   }
 
@@ -137,17 +147,24 @@ class SyncManager {
         case 'insert':
         case 'update': {
           if (!new_data) return { error: null }
-          const { error } = await supabase!.from(table).upsert(new_data).select()
+          const { error, data } = await supabase!.from(table).upsert(new_data).select()
+          if (error) {
+            console.error(`applyToSupabase insert/update error on ${table}/${recordId}:`, JSON.stringify(error))
+          }
           return { error }
         }
         case 'delete': {
           const { error } = await supabase!.from(table).delete().eq('id', recordId)
+          if (error) {
+            console.error(`applyToSupabase delete error on ${table}/${recordId}:`, JSON.stringify(error))
+          }
           return { error }
         }
         default:
           return { error: null }
       }
     } catch (err) {
+      console.error(`applyToSupabase exception on ${table}/${recordId}:`, err)
       return { error: err }
     }
   }
