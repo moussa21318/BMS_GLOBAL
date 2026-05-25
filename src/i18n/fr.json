@@ -137,7 +137,10 @@
       "price_positive": "Le prix doit être supérieur à zéro",
       "invalid_year": "Année du modèle invalide",
       "fees_exceed_price": "L'acompte + le deuxième paiement dépasse le prix initial",
-      "deposit_second_exceeds": "L'acompte + le deuxième paiement ne doit pas dépasser le prix initial"
+      "deposit_second_exceeds": "L'acompte + le deuxième paiement ne doit pas dépasser le prix initial",
+      "image_required": "Au moins une image est requise",
+      "deposit_or_second_required": "L'acompte ou le deuxième paiement est requis",
+      "purchase_evidence_required": "Une preuve d'achat est requise avant de dépasser l'étape d'achat"
     }
   },
   "fees": {

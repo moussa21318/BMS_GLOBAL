@@ -103,6 +103,15 @@ export function CarDetails() {
 
   async function handleStageMove(stage: string) {
     if (!car || !user) return
+    const targetIdx = STAGE_ORDER.indexOf(stage as Car['current_stage'])
+    const purchaseIdx = STAGE_ORDER.indexOf('purchase')
+    if (targetIdx > purchaseIdx) {
+      const purchaseLog = stageLogs.find(l => l.stage === 'purchase' && l.evidence_url)
+      if (!purchaseLog) {
+        alert(t('cars.validation.purchase_evidence_required'))
+        return
+      }
+    }
     const log: CarStageLog = {
       id: crypto.randomUUID(),
       car_id: car.id,

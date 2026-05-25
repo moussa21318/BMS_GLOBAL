@@ -125,6 +125,14 @@ export function CarForm() {
     if (fees.deposit + fees.second_payment > form.initial_price) {
       return t('cars.validation.deposit_second_exceeds')
     }
+    if (!isEditing) {
+      if (newImageFiles.length === 0 && existingImages.length === 0) {
+        return t('cars.validation.image_required')
+      }
+      if (fees.deposit <= 0 && fees.second_payment <= 0) {
+        return t('cars.validation.deposit_or_second_required')
+      }
+    }
     return null
   }
 

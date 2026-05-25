@@ -137,7 +137,10 @@
       "price_positive": "Price must be greater than zero",
       "invalid_year": "Invalid model year",
       "fees_exceed_price": "Deposit + second payment exceeds initial price",
-      "deposit_second_exceeds": "Deposit + second payment must not exceed the initial price"
+      "deposit_second_exceeds": "Deposit + second payment must not exceed the initial price",
+      "image_required": "At least one image is required",
+      "deposit_or_second_required": "Deposit or second payment is required",
+      "purchase_evidence_required": "Purchase evidence is required before advancing past the purchase stage"
     }
   },
   "fees": {
