@@ -25,7 +25,18 @@
     "submit": "إرسال",
     "required": "إجباري",
     "optional": "اختياري",
-    "no_data": "لا توجد بيانات"
+    "no_data": "لا توجد بيانات",
+    "saving": "جارٍ الحفظ...",
+    "previous": "السابق",
+    "next": "التالي",
+    "status": "الحالة",
+    "error": "خطأ",
+    "hide": "إخفاء",
+    "show": "عرض",
+    "just_now": "الآن",
+    "minutes_ago": "منذ {{count}} دقيقة",
+    "hours_ago": "منذ {{count}} ساعة",
+    "days_ago": "منذ {{count}} يوم"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -103,6 +114,7 @@
     "create_car": "إضافة السيارة",
     "not_found": "السيارة غير موجودة",
     "updated_at": "تاريخ آخر تعديل",
+    "delete": "حذف",
     "confirm_delete": "هل أنت متأكد من حذف هذه السيارة؟",
     "pending_edit_info": "هذه السيارة لديها طلب تعديل معلق",
     "edit_requests": "طلبات التعديل",
@@ -139,7 +151,8 @@
     "shipping_fees": "اتعاب الشحن",
     "total_fees": "مجموع الاتعاب",
     "total_price": "السعر الكلي",
-    "deposit_second_rule": "العربون + الدفعة الثانية لا يتجاوز السعر الأولي"
+    "deposit_second_rule": "العربون + الدفعة الثانية لا يتجاوز السعر الأولي",
+    "confirm_edit": "تأكيد تعديل {{label}} من {{oldVal}} KRW إلى {{newVal}} KRW؟"
   },
   "stage": {
     "deposit": "عربون",
@@ -236,6 +249,7 @@
     "user": "المستخدم",
     "table": "الجدول",
     "time": "الوقت",
+    "details": "التفاصيل",
     "no_data": "لا توجد نشاطات",
     "table_cars": "سيارة",
     "table_users": "مستخدم",

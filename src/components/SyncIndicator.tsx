@@ -1,14 +1,14 @@
 import { useSyncStore, type SyncStatus } from '../stores/syncStore'
 import { useTranslation } from 'react-i18next'
 
-function formatTimeAgo(ts: string): string {
+function formatTimeAgo(ts: string, t: (key: string, opts?: any) => string): string {
   const diff = Date.now() - new Date(ts).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'الآن'
-  if (mins < 60) return `منذ ${mins} دقيقة`
+  if (mins < 1) return t('common.just_now')
+  if (mins < 60) return t('common.minutes_ago', { count: mins })
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `منذ ${hrs} ساعة`
-  return `منذ ${Math.floor(hrs / 24)} يوم`
+  if (hrs < 24) return t('common.hours_ago', { count: hrs })
+  return t('common.days_ago', { count: Math.floor(hrs / 24) })
 }
 
 export function SyncIndicator() {
@@ -29,7 +29,7 @@ export function SyncIndicator() {
     success: {
       dot: 'bg-green-500 shadow-[0_0_6px_#22c55e]',
       labelKey: 'common.sync_success',
-      title: lastSyncAt ? `آخر مزامنة: ${formatTimeAgo(lastSyncAt)}` : '',
+      title: lastSyncAt ? `${t('common.sync_success')} (${formatTimeAgo(lastSyncAt, t)})` : '',
     },
     error: {
       dot: 'bg-red-500 shadow-[0_0_6px_#ef4444]',
@@ -52,7 +52,7 @@ export function SyncIndicator() {
         }`}>
           {t(c.labelKey)}
           {lastSyncAt && status === 'success' && (
-            <span className="text-gray-400 mr-1">({formatTimeAgo(lastSyncAt)})</span>
+            <span className="text-gray-400 mr-1">({formatTimeAgo(lastSyncAt, t)})</span>
           )}
         </span>
       </div>

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { localDB } from '../db/local'
 import { isSupabaseConfigured } from '../db/cloud'
 import { syncManager } from '../db/sync'
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextType>(null!)
 export const useAuth = () => useContext(AuthContext)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const initRef = useRef(false)
@@ -131,10 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const all = await localDB.users.toArray()
       const found = all.find(u => u.username === username && u.is_active)
-      if (!found) return 'اسم المستخدم أو كلمة المرور غير صحيحة'
+      if (!found) return t('auth.wrong_credentials')
 
       if (!getPwHash(username)) setPwHash(username, password)
-      else if (getPwHash(username) !== hash(password)) return 'اسم المستخدم أو كلمة المرور غير صحيحة'
+      else if (getPwHash(username) !== hash(password)) return t('auth.wrong_credentials')
 
       setUser(found)
       localStorage.setItem(USER_KEY, found.id)
@@ -149,15 +151,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await localDB.repairDatabase()
         const all = await localDB.users.toArray()
         const found = all.find(u => u.username === username && u.is_active)
-        if (!found) return 'اسم المستخدم أو كلمة المرور غير صحيحة'
+        if (!found) return t('auth.wrong_credentials')
         if (!getPwHash(username)) setPwHash(username, password)
-        else if (getPwHash(username) !== hash(password)) return 'اسم المستخدم أو كلمة المرور غير صحيحة'
+        else if (getPwHash(username) !== hash(password)) return t('auth.wrong_credentials')
         setUser(found)
         localStorage.setItem(USER_KEY, found.id)
         if (isSupabaseConfigured()) syncManager.sync()
         return null
       } catch {
-        return 'اسم المستخدم أو كلمة المرور غير صحيحة'
+        return t('auth.wrong_credentials')
       }
     }
   }

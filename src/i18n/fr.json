@@ -25,7 +25,18 @@
     "submit": "Soumettre",
     "required": "Obligatoire",
     "optional": "Facultatif",
-    "no_data": "Aucune donnée"
+    "no_data": "Aucune donnée",
+    "saving": "Enregistrement...",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "status": "Statut",
+    "error": "Erreur",
+    "hide": "Masquer",
+    "show": "Afficher",
+    "just_now": "Maintenant",
+    "minutes_ago": "Il y a {{count}} min",
+    "hours_ago": "Il y a {{count}} h",
+    "days_ago": "Il y a {{count}} j"
   },
   "auth": {
     "login": "Connexion",
@@ -103,6 +114,7 @@
     "create_car": "Ajouter la voiture",
     "not_found": "Voiture introuvable",
     "updated_at": "Dernière modification le",
+    "delete": "Supprimer",
     "confirm_delete": "Êtes-vous sûr de vouloir supprimer cette voiture ?",
     "pending_edit_info": "Cette voiture a une demande de modification en attente",
     "edit_requests": "Demandes de modification",
@@ -139,7 +151,8 @@
     "shipping_fees": "Frais d'expédition",
     "total_fees": "Total des frais",
     "total_price": "Prix total",
-    "deposit_second_rule": "L'acompte + le deuxième paiement ne doivent pas dépasser le prix initial"
+    "deposit_second_rule": "L'acompte + le deuxième paiement ne doivent pas dépasser le prix initial",
+    "confirm_edit": "Confirmer la modification de {{label}} de {{oldVal}} KRW à {{newVal}} KRW ?"
   },
   "stage": {
     "deposit": "Acompte",
@@ -236,6 +249,7 @@
     "user": "Utilisateur",
     "table": "Table",
     "time": "Heure",
+    "details": "Détails",
     "no_data": "Aucune activité",
     "table_cars": "Voiture",
     "table_users": "Utilisateur",

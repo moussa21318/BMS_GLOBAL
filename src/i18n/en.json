@@ -25,7 +25,18 @@
     "submit": "Submit",
     "required": "Required",
     "optional": "Optional",
-    "no_data": "No data"
+    "no_data": "No data",
+    "saving": "Saving...",
+    "previous": "Previous",
+    "next": "Next",
+    "status": "Status",
+    "error": "Error",
+    "hide": "Hide",
+    "show": "Show",
+    "just_now": "Just now",
+    "minutes_ago": "{{count}} min ago",
+    "hours_ago": "{{count}} hr ago",
+    "days_ago": "{{count}} day ago"
   },
   "auth": {
     "login": "Login",
@@ -103,6 +114,7 @@
     "create_car": "Create Car",
     "not_found": "Car not found",
     "updated_at": "Last Updated",
+    "delete": "Delete",
     "confirm_delete": "Are you sure you want to delete this car?",
     "pending_edit_info": "This car has a pending edit request",
     "edit_requests": "Edit Requests",
@@ -139,7 +151,8 @@
     "shipping_fees": "Shipping Fees",
     "total_fees": "Total Fees",
     "total_price": "Total Price",
-    "deposit_second_rule": "Deposit + second payment must not exceed the initial price"
+    "deposit_second_rule": "Deposit + second payment must not exceed the initial price",
+    "confirm_edit": "Confirm change {{label}} from {{oldVal}} KRW to {{newVal}} KRW?"
   },
   "stage": {
     "deposit": "Deposit",
@@ -236,6 +249,7 @@
     "user": "User",
     "table": "Table",
     "time": "Time",
+    "details": "Details",
     "no_data": "No activity",
     "table_cars": "Car",
     "table_users": "User",

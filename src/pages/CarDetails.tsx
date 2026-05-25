@@ -145,7 +145,7 @@ export function CarDetails() {
     if (!car || !fees || !user) return
     const oldVal = (fees as any)[key]
     const label = t(`cars.${key}`)
-    if (!confirm(`تأكيد تعديل ${label} من ${oldVal.toLocaleString('de-DE')} KRW إلى ${value.toLocaleString('de-DE')} KRW؟`)) {
+    if (!confirm(t('fees.confirm_edit', { label, oldVal: oldVal.toLocaleString('de-DE'), newVal: value.toLocaleString('de-DE') }))) {
       await loadAll()
       return
     }

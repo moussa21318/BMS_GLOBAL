@@ -127,7 +127,7 @@ export function ActivityLogPage() {
                             onClick={() => setExpanded(isExpanded ? null : log.id)}
                             className="text-blue-600 hover:text-blue-800 text-xs font-medium"
                           >
-                            {isExpanded ? 'إخفاء' : 'عرض'}
+                            {isExpanded ? t('common.hide') : t('common.show')}
                           </button>
                         )}
                       </td>

@@ -12,3 +12,18 @@ body {
 [dir="rtl"] {
   font-family: 'Segoe UI', 'Tahoma', sans-serif;
 }
+
+/* Prevent double-tap zoom on mobile buttons/selects */
+button, select, input, textarea, a {
+  touch-action: manipulation;
+}
+
+/* Improve scrollbar appearance on mobile */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}

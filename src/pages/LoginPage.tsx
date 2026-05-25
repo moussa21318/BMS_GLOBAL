@@ -30,14 +30,15 @@ export function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center p-4" dir={i18n.language === 'ar' ? 'rtl' : 'ltr'}>
       <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
         <div className="text-white/80 text-sm">BMS Global v1.0</div>
-        <div className="flex gap-2">
-          {(['ar', 'fr', 'en'] as const).map(lang => (
-            <button key={lang} onClick={() => changeLang(lang)}
-              className={`px-3 py-1 rounded text-sm transition ${i18n.language === lang ? 'bg-white text-blue-900 font-bold' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {lang.toUpperCase()}
-            </button>
-          ))}
-        </div>
+        <select
+          value={i18n.language}
+          onChange={(e) => changeLang(e.target.value)}
+          className="text-sm border border-white/30 bg-white/10 text-white rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-white/50 [&>option]:bg-gray-800 [&>option]:text-white"
+        >
+          <option value="ar">{t('lang.ar')}</option>
+          <option value="fr">{t('lang.fr')}</option>
+          <option value="en">{t('lang.en')}</option>
+        </select>
       </div>
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">

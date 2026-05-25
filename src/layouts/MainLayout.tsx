@@ -139,7 +139,7 @@ export function MainLayout() {
               <SyncIndicator />
 
               {/* Connection dot (server reachability) */}
-              <div className="flex items-center gap-1 text-xs" title={
+              <div className="hidden sm:flex items-center gap-1 text-xs" title={
                 connected === 'connected' ? t('common.sync_connected') :
                 connected === 'disconnected' ? t('common.sync_disconnected') :
                 connected === 'not_configured' ? t('common.sync_disabled') : t('common.sync_checking')
@@ -173,23 +173,15 @@ export function MainLayout() {
                 </button>
               )}
               {/* Language switcher */}
-              <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden text-sm">
-                {(['ar', 'fr', 'en'] as Lang[]).map((lang) => (
-                  <button
-                    key={lang}
-                    onClick={() => changeLang(lang)}
-                    className={`
-                      px-2.5 py-1.5 font-medium transition-colors
-                      ${currentLang === lang
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-gray-600 hover:bg-gray-100'
-                      }
-                    `}
-                  >
-                    {lang.toUpperCase()}
-                  </button>
-                ))}
-              </div>
+               <select
+                value={currentLang}
+                onChange={(e) => changeLang(e.target.value as Lang)}
+                className="text-xs sm:text-sm border border-gray-300 rounded-lg px-1.5 sm:px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[90px] sm:max-w-none"
+              >
+                <option value="ar">{t('lang.ar')}</option>
+                <option value="fr">{t('lang.fr')}</option>
+                <option value="en">{t('lang.en')}</option>
+              </select>
 
               {/* Notification badge */}
               <button
