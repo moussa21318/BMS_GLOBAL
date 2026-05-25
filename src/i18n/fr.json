@@ -225,7 +225,7 @@
     "created_at": "Date de création",
     "cannot_deactivate_self": "Vous ne pouvez pas désactiver votre propre compte",
     "cannot_deactivate_last_admin": "Impossible de désactiver le dernier administrateur actif",
-    "confirm_delete": "Êtes-vous sûr de vouloir supprimer {name}?"
+    "confirm_delete": "Êtes-vous sûr de vouloir supprimer {{name}}?"
   },
   "dashboard": {
     "title": "Tableau de bord",
