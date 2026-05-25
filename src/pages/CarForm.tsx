@@ -2,51 +2,9 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { localDB } from '../db/local'
+import * as cloud from '../db/cloud'
 import { MODEL_YEARS } from '../types'
 import type { Car, CarFees, CarImage } from '../types'
-
-interface FormState {
-  name: string
-  model_year: number
-  serial_number: string
-  license_plate: string
-  seller_number: string
-  owner_name: string
-  initial_price: number
-  notes: string
-}
-
-interface FeesFormState {
-  deposit: number
-  second_payment: number
-  transport_fee_1: number
-  transport_fee_2: number
-  other_fees: number
-  file_fees: number
-  shipping_fees: number
-}
-
-const emptyForm: FormState = {
-  name: '',
-  model_year: new Date().getFullYear(),
-  serial_number: '',
-  license_plate: '',
-  seller_number: '',
-  owner_name: '',
-  initial_price: 0,
-  notes: '',
-}
-
-const emptyFees: FeesFormState = {
-  deposit: 0,
-  second_payment: 0,
-  transport_fee_1: 0,
-  transport_fee_2: 0,
-  other_fees: 0,
-  file_fees: 0,
-  shipping_fees: 0,
-}
 
 export function CarForm() {
   const { t } = useTranslation()
@@ -55,8 +13,25 @@ export function CarForm() {
   const { user } = useAuth()
   const isEditing = !!id
 
-  const [form, setForm] = useState<FormState>(emptyForm)
-  const [fees, setFees] = useState<FeesFormState>(emptyFees)
+  const [form, setForm] = useState({
+    name: '',
+    model_year: new Date().getFullYear(),
+    serial_number: '',
+    license_plate: '',
+    seller_number: '',
+    owner_name: '',
+    initial_price: 0,
+    notes: '',
+  })
+  const [fees, setFees] = useState({
+    deposit: 0,
+    second_payment: 0,
+    transport_fee_1: 0,
+    transport_fee_2: 0,
+    other_fees: 0,
+    file_fees: 0,
+    shipping_fees: 0,
+  })
   const [existingImages, setExistingImages] = useState<CarImage[]>([])
   const [newImageFiles, setNewImageFiles] = useState<File[]>([])
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([])
@@ -70,11 +45,12 @@ export function CarForm() {
   }, [id])
 
   async function loadExisting(carId: string) {
-    const [carData, feesData, imagesData] = await Promise.all([
-      localDB.getCar(carId),
-      localDB.getCarFees(carId),
-      localDB.getCarImages(carId),
+    const [carRes, feesRes, imagesRes] = await Promise.all([
+      cloud.fetchCar(carId),
+      cloud.fetchCarFees(carId),
+      cloud.fetchCarImages(carId),
     ])
+    const carData = carRes.data
     if (!carData) {
       setError(t('cars.not_found'))
       setFetching(false)
@@ -90,22 +66,22 @@ export function CarForm() {
       initial_price: carData.initial_price,
       notes: carData.notes,
     })
-    if (feesData) {
+    if (feesRes.data) {
       setFees({
-        deposit: feesData.deposit,
-        second_payment: feesData.second_payment,
-        transport_fee_1: feesData.transport_fee_1,
-        transport_fee_2: feesData.transport_fee_2,
-        other_fees: feesData.other_fees,
-        file_fees: feesData.file_fees,
-        shipping_fees: feesData.shipping_fees,
+        deposit: feesRes.data.deposit,
+        second_payment: feesRes.data.second_payment,
+        transport_fee_1: feesRes.data.transport_fee_1,
+        transport_fee_2: feesRes.data.transport_fee_2,
+        other_fees: feesRes.data.other_fees,
+        file_fees: feesRes.data.file_fees,
+        shipping_fees: feesRes.data.shipping_fees,
       })
     }
-    setExistingImages(imagesData)
+    setExistingImages(imagesRes.data || [])
     setFetching(false)
   }
 
-  function updateForm(key: keyof FormState, value: string | number) {
+  function updateForm(key: string, value: string | number) {
     if (key === 'initial_price' && typeof value === 'number' && value > 0) {
       setFees(f => ({ ...f, second_payment: Math.max(0, value - f.deposit) }))
     }
@@ -113,7 +89,7 @@ export function CarForm() {
     setError('')
   }
 
-  function updateFees(key: keyof FeesFormState, value: string) {
+  function updateFees(key: string, value: string) {
     const num = Math.max(0, Number(value) || 0)
     setFees(prev => {
       const updated = { ...prev, [key]: num }
@@ -142,7 +118,7 @@ export function CarForm() {
   }
 
   async function removeExistingImage(imgId: string) {
-    await localDB.deleteCarImage(imgId)
+    await cloud.deleteCarImage(imgId)
     setExistingImages(prev => prev.filter(img => img.id !== imgId))
   }
 
@@ -183,6 +159,15 @@ export function CarForm() {
     try {
       const now = new Date().toISOString()
       const carId = id || crypto.randomUUID()
+      let createdBy = user.id
+      let createdAt = now
+      if (isEditing) {
+        const old = await cloud.fetchCar(carId)
+        if (old.data) {
+          createdBy = old.data.created_by
+          createdAt = old.data.created_at
+        }
+      }
 
       const carData: Car = {
         id: carId,
@@ -197,20 +182,19 @@ export function CarForm() {
         current_stage: 'deposit',
         confirmed: false,
         has_pending_edit: false,
-        created_by: isEditing ? (await localDB.getCar(carId))?.created_by || user.id : user.id,
+        created_by: createdBy,
         updated_by: user.id,
         confirmed_by: null,
-        created_at: isEditing ? (await localDB.getCar(carId))?.created_at || now : now,
+        created_at: createdAt,
         updated_at: now,
       }
 
       if (isEditing) {
-        await localDB.updateCar(carId, carData)
+        await cloud.updateCar(carId, carData)
       } else {
-        await localDB.addCar(carData)
+        await cloud.insertCar(carData)
       }
 
-      // Save fees
       const feeData: CarFees = {
         id: crypto.randomUUID(),
         car_id: carId,
@@ -220,9 +204,8 @@ export function CarForm() {
         created_at: now,
         updated_at: now,
       }
-      await localDB.setCarFees(feeData)
+      await cloud.upsertCarFees(feeData)
 
-      // Save new images
       for (let i = 0; i < newImageFiles.length; i++) {
         const file = newImageFiles[i]
         const path = URL.createObjectURL(file)
@@ -234,7 +217,7 @@ export function CarForm() {
           created_by: user.id,
           created_at: now,
         }
-        await localDB.addCarImage(img)
+        await cloud.insertCarImage(img)
       }
 
       navigate(`/cars/${carId}`)
@@ -260,7 +243,6 @@ export function CarForm() {
           <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">{error}</div>
         )}
 
-        {/* Basic Info */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-800">{t('cars.car_info')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -301,12 +283,10 @@ export function CarForm() {
           </Field>
         </div>
 
-        {/* Fees */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-800">{t('cars.fees')}</h2>
           {feesError && <div className="bg-red-50 text-red-600 p-2 rounded-lg text-sm">{feesError}</div>}
 
-          {/* Payment Breakdown */}
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('cars.payment_breakdown')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FeeField label={t('cars.deposit')} value={fees.deposit} onChange={v => updateFees('deposit', v)} />
@@ -319,7 +299,6 @@ export function CarForm() {
 
           <hr className="border-gray-200" />
 
-          {/* Additional Fees */}
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('cars.additional_fees')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FeeField label={t('cars.transport_fee_1')} value={fees.transport_fee_1} onChange={v => updateFees('transport_fee_1', v)} />
@@ -336,11 +315,9 @@ export function CarForm() {
           </div>
         </div>
 
-        {/* Images */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-800">{t('cars.images')}</h2>
 
-          {/* Existing images */}
           {existingImages.length > 0 && (
             <div className="space-y-2">
               <p className="text-sm text-gray-500">{t('cars.existing_images')}</p>
@@ -358,7 +335,6 @@ export function CarForm() {
             </div>
           )}
 
-          {/* New image uploads */}
           <div>
             <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer text-sm text-gray-700 transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
@@ -382,7 +358,6 @@ export function CarForm() {
           )}
         </div>
 
-        {/* Actions */}
         <div className="flex gap-3">
           <button type="submit" disabled={loading}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50">

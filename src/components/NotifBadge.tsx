@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { localDB } from '../db/local'
+import { fetchUnreadNotifications } from '../db/cloud'
 
 export function NotifBadge() {
   const { user } = useAuth()
@@ -10,10 +10,8 @@ export function NotifBadge() {
     if (!user) { setCount(0); return }
     let cancelled = false
     const update = async () => {
-      const c = await localDB.notifications
-        .where({ user_id: user.id, is_read: false })
-        .count()
-      if (!cancelled) setCount(c)
+      const { data } = await fetchUnreadNotifications(user.id)
+      if (!cancelled) setCount(data?.length || 0)
     }
     update()
     const interval = setInterval(update, 10000)

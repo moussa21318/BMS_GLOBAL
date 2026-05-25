@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { localDB } from '../db/local'
 import { useAuth } from '../auth/AuthContext'
+import { fetchEditRequests, fetchCar, updateEditRequest as cloudUpdateRequest, updateCar as cloudUpdateCar } from '../db/cloud'
 import type { EditRequest, Car } from '../types'
 
 type FilterStatus = 'pending' | 'approved' | 'rejected'
@@ -18,19 +18,21 @@ export function EditRequests() {
 
   useEffect(() => {
     if (!isAdmin) return
-    const load = async () => {
-      const all = await localDB.editRequests.toArray()
-      const carIds = [...new Set(all.map(r => r.car_id))]
-      const carMap: Record<string, Car> = {}
-      for (const id of carIds) {
-        const c = await localDB.cars.get(id)
-        if (c) carMap[id] = c
-      }
-      setCars(carMap)
-      setRequests(all)
-    }
     load()
   }, [isAdmin])
+
+  async function load() {
+    const { data: all } = await fetchEditRequests()
+    if (!all) return
+    const carIds = [...new Set(all.map(r => r.car_id))]
+    const carMap: Record<string, Car> = {}
+    for (const id of carIds) {
+      const { data: c } = await fetchCar(id)
+      if (c) carMap[id] = c
+    }
+    setCars(carMap)
+    setRequests(all)
+  }
 
   if (!isAdmin) {
     return (
@@ -47,7 +49,7 @@ export function EditRequests() {
   const handleReview = async (id: string, decision: 'approved' | 'rejected') => {
     setProcessing(prev => ({ ...prev, [id]: true }))
     try {
-      await localDB.updateEditRequest(id, {
+      await cloudUpdateRequest(id, {
         status: decision,
         reviewed_by: user!.id!,
         review_notes: reviewNotes[id] ?? '',
@@ -56,7 +58,7 @@ export function EditRequests() {
       if (decision === 'approved') {
         const req = requests.find(r => r.id === id)
         if (req) {
-          await localDB.updateCar(req.car_id, req.new_data as any)
+          await cloudUpdateCar(req.car_id, req.new_data as any)
         }
       }
 

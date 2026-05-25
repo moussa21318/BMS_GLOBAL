@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { localDB } from '../db/local'
+import { fetchCustomerByCar, insertCustomer, updateCustomer as cloudUpdateCustomer } from '../db/cloud'
 
 export function CustomerForm() {
   const { t } = useTranslation()
@@ -26,7 +26,7 @@ export function CustomerForm() {
   useEffect(() => {
     if (!carId || !user) return
     const load = async () => {
-      const existing = await localDB.customers.where('car_id').equals(carId).first()
+      const { data: existing } = await fetchCustomerByCar(carId)
       if (existing) {
         setCustomerId(existing.id!)
         setForm({
@@ -72,10 +72,10 @@ export function CustomerForm() {
       }
 
       if (customerId) {
-        await localDB.updateCustomer(customerId, record)
+        await cloudUpdateCustomer(customerId, record)
       } else {
         const newId = crypto.randomUUID()
-        await localDB.addCustomer({ id: newId, ...record })
+        await insertCustomer({ id: newId, ...record })
       }
 
       navigate(`/cars/${carId}`)

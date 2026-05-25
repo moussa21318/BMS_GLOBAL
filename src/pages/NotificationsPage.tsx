@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { localDB } from '../db/local'
+import { fetchNotifications, markNotificationRead, markAllNotificationsRead } from '../db/cloud'
 import type { Notification } from '../types'
 
 export function NotificationsPage() {
@@ -15,9 +15,8 @@ export function NotificationsPage() {
     if (!user) return
     let cancelled = false
     const load = async () => {
-      const all = await localDB.notifications.where('user_id').equals(user.id).toArray()
-      all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      if (!cancelled) setNotifications(all)
+      const { data: all } = await fetchNotifications(user.id)
+      if (!cancelled && all) setNotifications(all)
     }
     load()
     const interval = setInterval(load, 10000)
@@ -27,13 +26,13 @@ export function NotificationsPage() {
   const unreadCount = notifications.filter(n => !n.is_read).length
 
   const markAsRead = async (id: string) => {
-    await localDB.notifications.update(id, { is_read: true } as any)
+    await markNotificationRead(id)
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
   }
 
   const markAllAsRead = async () => {
-    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id)
-    await Promise.all(unreadIds.map(id => localDB.notifications.update(id, { is_read: true } as any)))
+    if (!user) return
+    await markAllNotificationsRead(user.id)
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
   }
 

@@ -1,13 +1,10 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { changeLang } from '../i18n'
 import { NotifBadge } from '../components/NotifBadge'
-import { SyncIndicator } from '../components/SyncIndicator'
 import { isSupabaseConfigured, checkConnection } from '../db/cloud'
-import { syncManager } from '../db/sync'
-import { useSyncStore } from '../stores/syncStore'
 
 type Lang = 'ar' | 'fr' | 'en'
 
@@ -26,8 +23,6 @@ export function MainLayout() {
   const { user, isAdmin, logout } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [connected, setConnected] = useState<'unknown' | 'connected' | 'disconnected' | 'not_configured'>('unknown')
-  const syncStatus = useSyncStore((s) => s.status)
-  const setSyncStatus = useSyncStore((s) => s.setStatus)
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -43,14 +38,6 @@ export function MainLayout() {
     return () => clearInterval(interval)
   }, [])
 
-  const handleSync = useCallback(async () => {
-    if (syncStatus === 'syncing' || !isSupabaseConfigured()) return
-    setSyncStatus('syncing')
-    await syncManager.sync()
-    const ok = await checkConnection()
-    setConnected(ok ? 'connected' : 'disconnected')
-  }, [syncStatus, setSyncStatus])
-
   const currentLang = i18n.language as Lang
   const isRtl = currentLang === 'ar'
 
@@ -65,7 +52,6 @@ export function MainLayout() {
 
   return (
     <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-gray-50 flex">
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-20 lg:hidden"
@@ -73,7 +59,6 @@ export function MainLayout() {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`
           fixed top-0 bottom-0 z-30 w-64 bg-gray-900 text-white transition-transform duration-300
@@ -114,12 +99,9 @@ export function MainLayout() {
         </nav>
       </aside>
 
-      {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
         <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
           <div className="flex items-center justify-between px-4 lg:px-6 h-16">
-            {/* Left: hamburger + title */}
             <div className="flex items-center gap-3">
               <button
                 onClick={toggleSidebar}
@@ -133,12 +115,7 @@ export function MainLayout() {
               <h1 className="text-lg font-semibold text-gray-800 lg:hidden">BMS Global</h1>
             </div>
 
-            {/* Right: indicator, sync, language, notifications, user */}
             <div className="flex items-center gap-2 sm:gap-4">
-              {/* Connection status + Sync indicator */}
-              <SyncIndicator />
-
-              {/* Connection dot (server reachability) */}
               <div className="hidden sm:flex items-center gap-1 text-xs" title={
                 connected === 'connected' ? t('common.sync_connected') :
                 connected === 'disconnected' ? t('common.sync_disconnected') :
@@ -154,26 +131,7 @@ export function MainLayout() {
                 />
               </div>
 
-              {/* Sync button */}
-              {isSupabaseConfigured() && (
-                <button
-                  onClick={handleSync}
-                  disabled={syncStatus === 'syncing'}
-                  className="p-2 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-50"
-                  title={t('common.sync')}
-                >
-                  <svg
-                    className={`w-5 h-5 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
-              )}
-              {/* Language switcher */}
-               <select
+              <select
                 value={currentLang}
                 onChange={(e) => changeLang(e.target.value as Lang)}
                 className="text-xs sm:text-sm border border-gray-300 rounded-lg px-1.5 sm:px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[90px] sm:max-w-none"
@@ -183,7 +141,6 @@ export function MainLayout() {
                 <option value="en">{t('lang.en')}</option>
               </select>
 
-              {/* Notification badge */}
               <button
                 onClick={() => navigate('/notifications')}
                 className="relative p-2 rounded-full text-gray-500 hover:bg-gray-100"
@@ -194,7 +151,6 @@ export function MainLayout() {
                 <span className="absolute -top-1 -right-1"><NotifBadge /></span>
               </button>
 
-              {/* User info */}
               <div className="hidden sm:flex items-center gap-2 text-sm text-gray-700">
                 <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
                   {user?.full_name?.charAt(0).toUpperCase() || 'U'}
@@ -202,7 +158,6 @@ export function MainLayout() {
                 <span className="font-medium max-w-[120px] truncate">{user?.full_name || user?.username || ''}</span>
               </div>
 
-              {/* Logout */}
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
@@ -216,7 +171,6 @@ export function MainLayout() {
           </div>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 p-4 lg:p-6 overflow-auto">
           <Outlet />
         </main>

@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { localDB } from '../db/local'
 import { STAGE_LABELS, STAGE_ORDER } from '../types'
+import { fetchAllCars, fetchAllUsers, fetchPendingEditRequests, fetchChangeLogs, supabase } from '../db/cloud'
 import type { Car, ChangeLog, EditRequest, Notification, User } from '../types'
+
+const FEE_KEYS = ['deposit', 'second_payment', 'transport_fee_1', 'transport_fee_2', 'other_fees', 'file_fees', 'shipping_fees']
 
 export function Dashboard() {
   const { t } = useTranslation()
@@ -17,21 +19,28 @@ export function Dashboard() {
   const [userMap, setUserMap] = useState<Map<string, User>>(new Map())
 
   useEffect(() => {
-    ;(async () => {
-      const [allCars, allUsers, pendingReqs, unread, logs] = await Promise.all([
-        localDB.cars.toArray(),
-        localDB.users.toArray(),
-        localDB.editRequests.filter(r => r.status === 'pending').toArray(),
-        localDB.notifications.filter(n => !n.is_read).toArray(),
-        localDB.changeLog.orderBy('timestamp').reverse().limit(5).toArray(),
-      ])
-      setCars(allCars)
-      setUserMap(new Map(allUsers.map(u => [u.id, u])))
-      setPendingRequests(pendingReqs)
-      setUnreadNotifs(unread)
-      setRecentLogs(logs)
-    })()
+    load()
   }, [])
+
+  async function load() {
+    try {
+      const [{ data: allCars }, { data: allUsers }, { data: pendingReqs }, unreadRes, { data: logs }] = await Promise.all([
+        fetchAllCars(),
+        fetchAllUsers(),
+        fetchPendingEditRequests(),
+        supabase ? supabase.from('notifications').select('*').eq('is_read', false) : Promise.resolve({ data: null, error: null }),
+        fetchChangeLogs(),
+      ])
+      const unread = unreadRes?.data
+      if (allCars) setCars(allCars)
+      if (allUsers) setUserMap(new Map(allUsers.map(u => [u.id, u])))
+      if (pendingReqs) setPendingRequests(pendingReqs)
+      if (unread) setUnreadNotifs(unread)
+      if (logs) setRecentLogs(logs.slice(0, 5))
+    } catch (e) {
+      console.error('Dashboard load error:', e)
+    }
+  }
 
   const stageCounts = STAGE_ORDER.map(stage => ({
     stage,
@@ -90,8 +99,7 @@ export function Dashboard() {
               const user = log.user_id ? userMap.get(log.user_id) : undefined
               let feeDiff: string | null = null
               if (log.table_name === 'car_fees' && log.operation === 'update' && log.old_data && log.new_data) {
-                const feeKeys = ['deposit', 'second_payment', 'transport_fee_1', 'transport_fee_2', 'other_fees', 'file_fees', 'shipping_fees']
-                const changes = feeKeys.filter(k => JSON.stringify((log.old_data as any)[k]) !== JSON.stringify((log.new_data as any)[k]))
+                const changes = FEE_KEYS.filter(k => JSON.stringify((log.old_data as any)[k]) !== JSON.stringify((log.new_data as any)[k]))
                 feeDiff = changes.map(k => {
                   const oldV = ((log.old_data as any)[k] || 0).toLocaleString('de-DE')
                   const newV = ((log.new_data as any)[k] || 0).toLocaleString('de-DE')

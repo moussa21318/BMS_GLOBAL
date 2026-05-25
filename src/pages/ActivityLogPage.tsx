@@ -1,6 +1,6 @@
 import { useState, useEffect, Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import { localDB } from '../db/local'
+import { fetchChangeLogs, fetchAllUsers } from '../db/cloud'
 import type { ChangeLog, User } from '../types'
 
 const FEE_KEYS = ['deposit', 'second_payment', 'transport_fee_1', 'transport_fee_2', 'other_fees', 'file_fees', 'shipping_fees']
@@ -15,17 +15,17 @@ export function ActivityLogPage() {
 
   useEffect(() => {
     ;(async () => {
-      const [allLogs, allUsers] = await Promise.all([
-        localDB.changeLog.orderBy('timestamp').reverse().toArray(),
-        localDB.users.toArray(),
+      const [{ data: allLogs }, { data: allUsers }] = await Promise.all([
+        fetchChangeLogs(),
+        fetchAllUsers(),
       ])
-      setLogs(allLogs)
-      setUserMap(new Map(allUsers.map(u => [u.id, u])))
+      if (allLogs) setLogs(allLogs)
+      if (allUsers) setUserMap(new Map(allUsers.map(u => [u.id, u])))
       setLoading(false)
     })()
   }, [])
 
-  const filteredLogs = logs.filter(log => !searchCarId || (log.car_id && log.car_id.toLowerCase().includes(searchCarId.toLowerCase())))
+  const filteredLogs = logs.filter(log => !searchCarId || (log.record_id && log.record_id.toLowerCase().includes(searchCarId.toLowerCase())))
 
   if (loading) {
     return <div className="text-center py-12 text-gray-500">{t('common.loading')}</div>
@@ -119,7 +119,7 @@ export function ActivityLogPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs text-gray-500 font-mono">{log.car_id ? log.car_id.substring(0, 8) + '…' : '—'}</span>
+                        <span className="text-xs text-gray-500 font-mono">{log.record_id ? log.record_id.substring(0, 8) + '…' : '—'}</span>
                       </td>
                       <td className="px-4 py-3">
                         {feeChanges && feeChanges.length > 0 && (

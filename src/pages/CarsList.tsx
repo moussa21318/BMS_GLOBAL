@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { localDB } from '../db/local'
 import { useAuth } from '../auth/AuthContext'
+import { fetchAllCars, fetchCarImages, deleteCar as cloudDeleteCar } from '../db/cloud'
 import { STAGE_LABELS, STAGE_ORDER } from '../types'
 import type { Car, CarImage } from '../types'
 
@@ -35,14 +35,16 @@ export function CarsList() {
 
   async function loadData() {
     setLoading(true)
-    const allCars = await localDB.getCars()
-    setCars(allCars)
+    const { data: allCars } = await fetchAllCars()
+    setCars(allCars || [])
 
     const imageMap = new Map<string, CarImage>()
-    for (const car of allCars) {
-      const images = await localDB.getCarImages(car.id)
-      if (images.length > 0) {
-        imageMap.set(car.id, images[0])
+    if (allCars) {
+      for (const car of allCars) {
+        const { data: images } = await fetchCarImages(car.id)
+        if (images && images.length > 0) {
+          imageMap.set(car.id, images[0])
+        }
       }
     }
     setAllImages(imageMap)
@@ -94,13 +96,12 @@ export function CarsList() {
   async function handleDelete(car: Car, e: React.MouseEvent) {
     e.stopPropagation()
     if (!confirm(t('cars.confirm_delete') || `Delete "${car.name}"?`)) return
-    await localDB.deleteCar(car.id)
+    await cloudDeleteCar(car.id)
     await loadData()
   }
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-800">{t('cars.title')}</h1>
         <button
@@ -111,7 +112,6 @@ export function CarsList() {
         </button>
       </div>
 
-      {/* Search & Filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <input
           type="text"
@@ -132,7 +132,6 @@ export function CarsList() {
         </select>
       </div>
 
-      {/* Cars Grid */}
       {loading ? (
         <div className="text-center py-12 text-gray-500">{t('common.loading')}</div>
       ) : paginated.length === 0 ? (
@@ -148,14 +147,12 @@ export function CarsList() {
                   onClick={() => navigate(`/cars/${car.id}`)}
                   className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden relative"
                 >
-                  {/* Pending edit indicator */}
                   {car.has_pending_edit && (
                     <div className="absolute top-2 left-2 z-10 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full">
                       {t('cars.pending_edit')}
                     </div>
                   )}
 
-                  {/* Image */}
                   <div className="h-40 bg-gray-100 overflow-hidden">
                     {firstImage ? (
                       <img
@@ -172,7 +169,6 @@ export function CarsList() {
                     )}
                   </div>
 
-                  {/* Info */}
                   <div className="p-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="font-semibold text-gray-800 truncate">{car.name}</h3>
@@ -208,7 +204,6 @@ export function CarsList() {
             })}
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 pt-4">
               <button

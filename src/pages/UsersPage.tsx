@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
-import { localDB } from '../db/local'
+import { hash } from '../utils/hash'
+import { fetchAllUsers, insertUser, updateUser as cloudUpdateUser } from '../db/cloud'
 import type { User } from '../types'
 
 interface UserForm {
@@ -22,7 +23,7 @@ const emptyForm: UserForm = {
 
 export function UsersPage() {
   const { t } = useTranslation()
-  const { isAdmin } = useAuth()
+  const { isAdmin, user: currentUser } = useAuth()
 
   const [users, setUsers] = useState<User[]>([])
   const [showModal, setShowModal] = useState(false)
@@ -32,12 +33,13 @@ export function UsersPage() {
 
   useEffect(() => {
     if (!isAdmin) return
-    const load = async () => {
-      const all = await localDB.users.toArray()
-      setUsers(all)
-    }
     load()
   }, [isAdmin])
+
+  async function load() {
+    const { data } = await fetchAllUsers()
+    if (data) setUsers(data)
+  }
 
   if (!isAdmin) {
     return (
@@ -85,32 +87,28 @@ export function UsersPage() {
           full_name: form.full_name.trim(),
           role: form.role,
           is_active: form.is_active,
+          updated_by: currentUser!.id,
           updated_at: now,
         }
         if (form.password.trim()) {
-          const h = hash(form.password.trim())
-          localStorage.setItem('bms_pw_' + form.username, h)
-          payload.password_hash = h
+          payload.password_hash = hash(form.password.trim())
         }
-        await localDB.updateUser(editingId, payload)
-        setUsers(prev => prev.map(u => (u.id === editingId ? { ...u, ...payload } : u)))
+        await cloudUpdateUser(editingId, payload)
       } else {
         const id = crypto.randomUUID()
-        const h = hash(form.password.trim())
         const record: User = {
           id,
           username: form.username.trim(),
           role: form.role,
           full_name: form.full_name.trim(),
           is_active: form.is_active,
-          password_hash: h,
+          password_hash: hash(form.password.trim()),
           created_at: now,
           updated_at: now,
         }
-        localStorage.setItem('bms_pw_' + record.username, h)
-        await localDB.addUser(record)
-        setUsers(prev => [...prev, record])
+        await insertUser(record)
       }
+      await load()
       setShowModal(false)
     } finally {
       setSaving(false)
@@ -118,9 +116,8 @@ export function UsersPage() {
   }
 
   const toggleActive = async (u: User) => {
-    const next = !u.is_active
-    await localDB.updateUser(u.id!, { is_active: next, updated_at: new Date().toISOString() })
-    setUsers(prev => prev.map(x => (x.id === u.id ? { ...x, is_active: next } : x)))
+    await cloudUpdateUser(u.id!, { is_active: !u.is_active, updated_at: new Date().toISOString(), updated_by: currentUser!.id })
+    await load()
   }
 
   const roleColors: Record<string, string> = {
@@ -134,10 +131,10 @@ export function UsersPage() {
         <h1 className="text-2xl font-bold text-gray-900">{t('user.title')}</h1>
         <div className="flex items-center gap-2">
           <button onClick={async () => {
-            const all = await localDB.users.toArray()
-            const data = all.map(u => ({ username: u.username, password_hash: u.password_hash }))
-            console.table(data)
-            alert(JSON.stringify(data, null, 2))
+            const { data } = await fetchAllUsers()
+            const d = (data || []).map(u => ({ username: u.username, password_hash: u.password_hash }))
+            console.table(d)
+            alert(JSON.stringify(d, null, 2))
           }}
             className="rounded-lg bg-gray-600 px-5 py-2 text-sm font-medium text-white hover:bg-gray-700">
             تصدير
@@ -243,10 +240,4 @@ export function UsersPage() {
       )}
     </div>
   )
-}
-
-function hash(pw: string): string {
-  let h = 0
-  for (let i = 0; i < pw.length; i++) h = ((h << 5) - h) + pw.charCodeAt(i)
-  return 'h_' + Math.abs(h).toString(36)
 }

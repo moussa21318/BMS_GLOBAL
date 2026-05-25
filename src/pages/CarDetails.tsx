@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { localDB } from '../db/local'
+import * as cloud from '../db/cloud'
 import { STAGE_LABELS, STAGE_ORDER } from '../types'
 import type { Car, CarImage, CarFees, CarStageLog, Customer, EditRequest, User, ChangeLog } from '../types'
 
@@ -61,38 +61,43 @@ export function CarDetails() {
   async function loadAll() {
     if (!id) return
     setLoading(true)
-    const [c, imgs, f, logs, cust, edits, users, changeLogs] = await Promise.all([
-      localDB.getCar(id),
-      localDB.getCarImages(id),
-      localDB.getCarFees(id),
-      localDB.getCarStageLogs(id),
-      localDB.getCustomerByCar(id),
-      localDB.getEditRequestsByCar(id),
-      localDB.users.toArray(),
-      localDB.getChangeLog(),
-    ])
-    if (!c) { setLoading(false); return }
-    setCar(c)
-    setImages(imgs)
-    setFees(f || null)
-    setStageLogs(logs)
-    setCustomer(cust || null)
-    setEditRequests(edits)
-    setCarLogs(changeLogs.filter(l => l.table_name === 'car_fees' && l.record_id === f?.id))
-    setUserMap(new Map(users.map(u => [u.id, u])))
+    try {
+      const [cRes, imgsRes, fRes, logsRes, custRes, editsRes, usersRes, changeLogsRes] = await Promise.all([
+        cloud.fetchCar(id),
+        cloud.fetchCarImages(id),
+        cloud.fetchCarFees(id),
+        cloud.fetchCarStageLogs(id),
+        cloud.fetchCustomerByCar(id),
+        cloud.fetchEditRequestsByCar(id),
+        cloud.fetchAllUsers(),
+        cloud.fetchChangeLogsByTable('car_fees'),
+      ])
+      const c = cRes.data
+      if (!c) { setLoading(false); return }
+      setCar(c)
+      setImages(imgsRes.data || [])
+      setFees(fRes.data || null)
+      setStageLogs(logsRes.data || [])
+      setCustomer(custRes.data || null)
+      setEditRequests(editsRes.data || [])
+      setCarLogs((changeLogsRes.data || []).filter(l => l.table_name === 'car_fees' && l.record_id === fRes.data?.id))
+      setUserMap(new Map((usersRes.data || []).map(u => [u.id, u])))
+    } catch (e) {
+      console.error('loadAll error:', e)
+    }
     setLoading(false)
   }
 
   async function handleDelete() {
     if (!car) return
     if (!confirm(t('cars.confirm_delete') || `Delete "${car.name}"?`)) return
-    await localDB.deleteCar(car.id)
+    await cloud.deleteCar(car.id)
     navigate('/cars')
   }
 
   async function handleConfirm() {
     if (!car || !user) return
-    await localDB.updateCar(car.id, { confirmed: true, confirmed_by: user.id })
+    await cloud.updateCar(car.id, { confirmed: true, confirmed_by: user.id, updated_by: user.id })
     await loadAll()
   }
 
@@ -107,8 +112,8 @@ export function CarDetails() {
       moved_by: user.id,
       created_at: new Date().toISOString(),
     }
-    await localDB.addCarStageLog(log)
-    await localDB.updateCar(car.id, { current_stage: stage as Car['current_stage'] })
+    await cloud.insertCarStageLog(log)
+    await cloud.updateCar(car.id, { current_stage: stage as Car['current_stage'], updated_by: user.id })
     setStageNote('')
     await loadAll()
   }
@@ -121,15 +126,11 @@ export function CarDetails() {
       const file = input.files?.[0]
       if (!file || !car) return
       const path = URL.createObjectURL(file)
-      await localDB.updateCar(car.id, {})
-      const logs = await localDB.getCarStageLogs(car.id)
+      const logsRes = await cloud.fetchCarStageLogs(car.id)
+      const logs = logsRes.data || []
       const targetLog = logs.find(l => l.id === stageId)
       if (targetLog) {
-        const updatedLog: CarStageLog = {
-          ...targetLog,
-          evidence_url: path,
-        }
-        await localDB.carStages.put(updatedLog)
+        await cloud.updateCarStageLog(stageId, { evidence_url: path })
         await loadAll()
       }
     }
@@ -152,7 +153,7 @@ export function CarDetails() {
     const updated: CarFees = { ...fees, [key]: value, updated_by: user.id }
     if (key === 'deposit') updated.second_payment = car.initial_price - value
     if (key === 'second_payment') updated.deposit = car.initial_price - value
-    await localDB.setCarFees(updated)
+    await cloud.upsertCarFees(updated)
     await loadAll()
   }
 
@@ -179,7 +180,6 @@ export function CarDetails() {
 
   return (
     <div ref={contentRef} className="max-w-5xl mx-auto space-y-6">
-      {/* Header actions */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-800">{car.name}</h1>
         <div className="flex flex-wrap gap-2">
@@ -218,7 +218,6 @@ export function CarDetails() {
         </div>
       </div>
 
-      {/* Tab bar */}
       <div className="flex border-b border-gray-200">
         <button
           onClick={() => setActiveTab('info')}
@@ -266,9 +265,7 @@ export function CarDetails() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Car Info */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Basic Info Card */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h2 className="text-lg font-semibold text-gray-800">{t('cars.car_info')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -289,7 +286,6 @@ export function CarDetails() {
             )}
           </div>
 
-          {/* Stage Progression */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h2 className="text-lg font-semibold text-gray-800">{t('cars.stage_progression')}</h2>
             <div className="flex items-center gap-0">
@@ -329,7 +325,6 @@ export function CarDetails() {
             )}
           </div>
 
-          {/* Stage Timeline Log */}
           {stageLogs.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
               <h2 className="text-lg font-semibold text-gray-800">{t('cars.stage_log')}</h2>
@@ -364,7 +359,6 @@ export function CarDetails() {
             </div>
           )}
 
-          {/* Customer Info (shipping_prep or shipping) */}
           {(car.current_stage === 'shipping_prep' || car.current_stage === 'shipping') && (
             <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
               <h2 className="text-lg font-semibold text-gray-800">{t('cars.customer_info')}</h2>
@@ -384,9 +378,7 @@ export function CarDetails() {
           )}
         </div>
 
-        {/* Right sidebar */}
         <div className="space-y-6">
-          {/* Created/Updated Info */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-2 text-sm text-gray-600">
             <p><span className="text-gray-400">{t('cars.created_by')}:</span> {getUserName(car.created_by)}</p>
             <p><span className="text-gray-400">{t('cars.created_at')}:</span> {new Date(car.created_at).toLocaleString()}</p>
@@ -403,7 +395,6 @@ export function CarDetails() {
             )}
           </div>
 
-          {/* Edit Requests */}
           {editRequests.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
               <h2 className="text-lg font-semibold text-gray-800">{t('cars.edit_requests')}</h2>
@@ -428,12 +419,10 @@ export function CarDetails() {
 
       {activeTab === 'fees' && (
         <div className="space-y-6">
-          {/* Fees Card */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h2 className="text-lg font-semibold text-gray-800">{t('cars.fees')}</h2>
             {fees ? (
               <div className="space-y-2 text-sm">
-                {/* Payment Breakdown */}
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('cars.payment_breakdown')}</p>
                 <EditableFeeRow label={t('cars.deposit')} value={fees.deposit} canEdit={canEditFees} onSave={v => handleFeeUpdate('deposit', v)} />
                 <EditableFeeRow label={t('cars.second_payment')} value={fees.second_payment} canEdit={canEditFees} onSave={v => handleFeeUpdate('second_payment', v)} />
@@ -443,7 +432,6 @@ export function CarDetails() {
                 </div>
                 <hr className="border-gray-200" />
 
-                {/* Additional Fees */}
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('cars.additional_fees')}</p>
                 <EditableFeeRow label={t('cars.transport_fee_1')} value={fees.transport_fee_1} canEdit={canEditFees} onSave={v => handleFeeUpdate('transport_fee_1', v)} />
                 <EditableFeeRow label={t('cars.transport_fee_2')} value={fees.transport_fee_2} canEdit={canEditFees} onSave={v => handleFeeUpdate('transport_fee_2', v)} />
@@ -462,7 +450,6 @@ export function CarDetails() {
             )}
           </div>
 
-          {/* Mini Activity Log */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
             <h2 className="text-lg font-semibold text-gray-800">{t('cars.fee_history')}</h2>
             {carLogs.length === 0 ? (
