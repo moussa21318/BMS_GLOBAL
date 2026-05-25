@@ -71,9 +71,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
-        }
-
-        if (!getPwHash('admin')) {
           setPwHash('admin', 'admin')
         }
 
@@ -114,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               updated_at: new Date().toISOString(),
             })
           }
-          if (!getPwHash('admin')) setPwHash('admin', 'admin')
+          setPwHash('admin', 'admin')
           const anyUser = await localDB.users.where('is_active').equals(true).limit(1).first()
           if (anyUser) {
             setUser(anyUser)
@@ -150,7 +147,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await localDB.repairDatabase()
         const all = await localDB.users.toArray()
-        const found = all.find(u => u.username === username && u.is_active)
+        if (all.length === 0) {
+          await localDB.addUser({
+            id: crypto.randomUUID(),
+            username: 'admin',
+            role: 'admin',
+            full_name: 'Admin',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          setPwHash('admin', 'admin')
+        }
+        const users = await localDB.users.toArray()
+        const found = users.find(u => u.username === username && u.is_active)
         if (!found) return t('auth.wrong_credentials')
         if (!getPwHash(username)) setPwHash(username, password)
         else if (getPwHash(username) !== hash(password)) return t('auth.wrong_credentials')
