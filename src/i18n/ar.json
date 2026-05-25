@@ -224,7 +224,8 @@
     "is_active": "نشط",
     "created_at": "تاريخ الإنشاء",
     "cannot_deactivate_self": "لا يمكنك تعطيل حسابك الخاص",
-    "cannot_deactivate_last_admin": "لا يمكن تعطيل آخر مشرف في النظام"
+    "cannot_deactivate_last_admin": "لا يمكن تعطيل آخر مشرف في النظام",
+    "confirm_delete": "هل أنت متأكد من حذف {name}؟"
   },
   "dashboard": {
     "title": "لوحة التحكم",

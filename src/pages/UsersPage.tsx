@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
 import { hash } from '../utils/hash'
-import { fetchAllUsers, insertUser, updateUser as cloudUpdateUser } from '../db/cloud'
+import { fetchAllUsers, insertUser, updateUser as cloudUpdateUser, deleteUser as cloudDeleteUser } from '../db/cloud'
 import type { User } from '../types'
 
 interface UserForm {
@@ -135,6 +135,26 @@ export function UsersPage() {
     await load()
   }
 
+  const handleDelete = async (u: User) => {
+    if (!currentUser) return
+    if (u.id === currentUser.id) {
+      alert(t('user.cannot_deactivate_self'))
+      return
+    }
+    if (u.role === 'admin') {
+      const { data: admins } = await fetchAllUsers()
+      const activeAdmins = (admins || []).filter(a => a.role === 'admin' && a.is_active && a.id !== u.id)
+      if (activeAdmins.length === 0) {
+        alert(t('user.cannot_deactivate_last_admin'))
+        return
+      }
+    }
+    if (!confirm(t('user.confirm_delete', { name: u.full_name || u.username }))) return
+    const { error } = await cloudDeleteUser(u.id!)
+    if (error) { console.error(error); return }
+    await load()
+  }
+
   const roleColors: Record<string, string> = {
     admin: 'bg-purple-100 text-purple-800',
     employee: 'bg-blue-100 text-blue-800',
@@ -190,10 +210,14 @@ export function UsersPage() {
                     {u.is_active ? t('common.yes') : t('common.no')}
                   </button>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 flex gap-1">
                   <button onClick={() => openEdit(u)}
                     className="rounded px-3 py-1 text-sm font-medium text-blue-600 hover:bg-blue-50">
                     {t('common.edit')}
+                  </button>
+                  <button onClick={() => handleDelete(u)}
+                    className="rounded px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50">
+                    {t('common.delete')}
                   </button>
                 </td>
               </tr>
