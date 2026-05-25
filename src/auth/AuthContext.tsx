@@ -130,10 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const all = await localDB.users.toArray()
       const found = all.find(u => u.username === username && u.is_active)
-      if (!found) return t('auth.wrong_credentials')
-
-      if (!getPwHash(username)) setPwHash(username, password)
-      else if (getPwHash(username) !== hash(password)) return t('auth.wrong_credentials')
+      if (!found || !getPwHash(username) || getPwHash(username) !== hash(password)) return t('auth.wrong_credentials')
 
       setUser(found)
       localStorage.setItem(USER_KEY, found.id)
@@ -161,9 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         const users = await localDB.users.toArray()
         const found = users.find(u => u.username === username && u.is_active)
-        if (!found) return t('auth.wrong_credentials')
-        if (!getPwHash(username)) setPwHash(username, password)
-        else if (getPwHash(username) !== hash(password)) return t('auth.wrong_credentials')
+        if (!found || !getPwHash(username) || getPwHash(username) !== hash(password)) return t('auth.wrong_credentials')
         setUser(found)
         localStorage.setItem(USER_KEY, found.id)
         if (isSupabaseConfigured()) syncManager.sync()
