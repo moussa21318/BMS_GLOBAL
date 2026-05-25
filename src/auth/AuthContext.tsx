@@ -7,7 +7,7 @@ import type { User } from '../types'
 const PW_PREFIX = 'bms_pw_'
 const USER_KEY = 'bms_user'
 const VERSION_KEY = 'bms_ver'
-const APP_VERSION = '2'
+const APP_VERSION = '3'
 
 function hash(pw: string): string {
   let h = 0

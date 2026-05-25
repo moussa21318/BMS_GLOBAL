@@ -54,26 +54,57 @@ export class LocalDB extends Dexie {
     }
   }
 
+  async repairDatabase() {
+    try {
+      await this.delete()
+      await this.open()
+    } catch (e) {
+      console.error('repairDatabase failed:', e)
+    }
+  }
+
   // ── Sync Queue ────────────────────────────────────────────────
 
   async enqueueSync(entry: Omit<SyncQueueEntry, 'id' | 'synced' | 'created_at'>) {
-    const id = crypto.randomUUID()
-    const createdAt = new Date().toISOString()
-    await this.syncQueue.add({ ...entry, id, synced: false, created_at: createdAt })
-    this.triggerAutoSync()
-    return id
+    try {
+      const id = crypto.randomUUID()
+      const createdAt = new Date().toISOString()
+      await this.syncQueue.add({ ...entry, id, synced: false, created_at: createdAt })
+      this.triggerAutoSync()
+      return id
+    } catch (err) {
+      console.error('enqueueSync failed:', err)
+      await this.repairDatabase()
+      return ''
+    }
   }
 
   async getUnsyncedEntries(): Promise<SyncQueueEntry[]> {
-    return this.syncQueue.where({ synced: false }).toArray()
+    try {
+      return await this.syncQueue.where({ synced: false }).toArray()
+    } catch (err) {
+      console.error('getUnsyncedEntries failed:', err)
+      await this.repairDatabase()
+      return []
+    }
   }
 
   async markSynced(ids: string[]) {
-    await this.syncQueue.bulkUpdate(ids.map(id => ({ key: id, changes: { synced: true } })))
+    try {
+      await this.syncQueue.bulkUpdate(ids.map(id => ({ key: id, changes: { synced: true } })))
+    } catch (err) {
+      console.error('markSynced failed:', err)
+      await this.repairDatabase()
+    }
   }
 
   async clearSynced() {
-    await this.syncQueue.where({ synced: true }).delete()
+    try {
+      await this.syncQueue.where({ synced: true }).delete()
+    } catch (err) {
+      console.error('clearSynced failed:', err)
+      await this.repairDatabase()
+    }
   }
 
   // ── Users ─────────────────────────────────────────────────────
