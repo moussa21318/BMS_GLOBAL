@@ -222,7 +222,9 @@
     "admin": "مدير",
     "employee": "موظف",
     "is_active": "نشط",
-    "created_at": "تاريخ الإنشاء"
+    "created_at": "تاريخ الإنشاء",
+    "cannot_deactivate_self": "لا يمكنك تعطيل حسابك الخاص",
+    "cannot_deactivate_last_admin": "لا يمكن تعطيل آخر مشرف في النظام"
   },
   "dashboard": {
     "title": "لوحة التحكم",

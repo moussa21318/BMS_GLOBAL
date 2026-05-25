@@ -87,13 +87,13 @@ export function UsersPage() {
           full_name: form.full_name.trim(),
           role: form.role,
           is_active: form.is_active,
-          updated_by: currentUser!.id,
           updated_at: now,
         }
         if (form.password.trim()) {
           payload.password_hash = hash(form.password.trim())
         }
-        await cloudUpdateUser(editingId, payload)
+        const { error: updateErr } = await cloudUpdateUser(editingId, payload)
+        if (updateErr) throw new Error(JSON.stringify(updateErr))
       } else {
         const id = crypto.randomUUID()
         const record: User = {
@@ -106,7 +106,8 @@ export function UsersPage() {
           created_at: now,
           updated_at: now,
         }
-        await insertUser(record)
+        const { error: insertErr } = await insertUser(record)
+        if (insertErr) throw new Error(JSON.stringify(insertErr))
       }
       await load()
       setShowModal(false)
@@ -116,7 +117,21 @@ export function UsersPage() {
   }
 
   const toggleActive = async (u: User) => {
-    await cloudUpdateUser(u.id!, { is_active: !u.is_active, updated_at: new Date().toISOString(), updated_by: currentUser!.id })
+    if (!currentUser) return
+    if (u.id === currentUser.id) {
+      alert(t('user.cannot_deactivate_self'))
+      return
+    }
+    if (u.role === 'admin') {
+      const { data: admins } = await fetchAllUsers()
+      const activeAdmins = (admins || []).filter(a => a.role === 'admin' && a.is_active && a.id !== u.id)
+      if (activeAdmins.length === 0) {
+        alert(t('user.cannot_deactivate_last_admin'))
+        return
+      }
+    }
+    const { error } = await cloudUpdateUser(u.id!, { is_active: !u.is_active, updated_at: new Date().toISOString() })
+    if (error) { console.error(error); return }
     await load()
   }
 
@@ -146,8 +161,8 @@ export function UsersPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200">
-        <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto rounded-xl border border-gray-200">
+        <table className="w-full text-left text-sm min-w-[500px]">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 font-medium text-gray-600">{t('user.username')}</th>

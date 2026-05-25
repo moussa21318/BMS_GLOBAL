@@ -222,7 +222,9 @@
     "admin": "Administrateur",
     "employee": "Employé",
     "is_active": "Actif",
-    "created_at": "Date de création"
+    "created_at": "Date de création",
+    "cannot_deactivate_self": "Vous ne pouvez pas désactiver votre propre compte",
+    "cannot_deactivate_last_admin": "Impossible de désactiver le dernier administrateur actif"
   },
   "dashboard": {
     "title": "Tableau de bord",

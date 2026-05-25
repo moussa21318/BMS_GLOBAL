@@ -84,7 +84,7 @@ export async function updateUser(id: string, changes: Partial<User>) {
   if (!error && data) {
     await createChangeLogEntry({
       table_name: 'users', record_id: id, operation: 'update',
-      old_data: oldData, new_data: data, user_id: changes.updated_by || id,
+      old_data: oldData, new_data: data,       user_id: id,
     })
   }
   return { data, error }
