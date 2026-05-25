@@ -142,10 +142,9 @@ class SyncManager {
 
     if (syncedIds.length > 0) {
       try {
-        await localDB.markSynced(syncedIds)
-        await localDB.clearSynced()
+        await localDB.deleteSynced(syncedIds)
       } catch (err) {
-        console.error('Error marking entries as synced:', err instanceof Error ? err.message : JSON.stringify(err))
+        console.error('Error deleting synced entries:', err instanceof Error ? err.message : JSON.stringify(err))
       }
     }
   }

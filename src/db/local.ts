@@ -87,19 +87,11 @@ export class LocalDB extends Dexie {
     }
   }
 
-  async markSynced(ids: string[]) {
+  async deleteSynced(ids: string[]) {
     try {
-      await this.syncQueue.bulkUpdate(ids.map(id => ({ key: id, changes: { synced: true } })))
+      await Promise.all(ids.map(id => this.syncQueue.delete(id)))
     } catch (err) {
-      console.error('markSynced failed:', err instanceof Error ? err.message : JSON.stringify(err))
-    }
-  }
-
-  async clearSynced() {
-    try {
-      await this.syncQueue.where({ synced: true }).delete()
-    } catch (err) {
-      console.error('clearSynced failed:', err instanceof Error ? err.message : JSON.stringify(err))
+      console.error('deleteSynced failed:', err instanceof Error ? err.message : JSON.stringify(err))
     }
   }
 
